@@ -1,14 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="dheera.cs160.berkeley.edu.fsmtoqapp" >
-
+    <uses-permission android:name="android.permission.ACCESS_GPS" />
+    <uses-permission android:name="android.permission.ACCESS_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
+
         <activity
-            android:name=".FSMToqMyActivity"
+            android:name=".ToqActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -16,6 +22,34 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+
+        <activity
+          android:name=".FSMToqActivity"
+          android:label="@string/app_name" >
+        <!--  <intent-filter>
+              <action android:name="android.intent.action.MAIN" />
+
+              <category android:name="android.intent.category.LAUNCHER" />
+          </intent-filter> -->
+      </activity>
+
+        <activity
+            android:name="gmail.yuyang226.flickrj.sample.android.FlickrjActivity"
+            android:label="@string/app_name"
+            android:launchMode="singleTask" >
+          <!--  <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="flickrj-android-sample-oauth" />
+            </intent-filter> -->
+        </activity>
+
+
     </application>
+
 
 </manifest>
