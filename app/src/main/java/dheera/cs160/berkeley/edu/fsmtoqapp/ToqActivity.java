@@ -19,14 +19,20 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.qualcomm.toq.smartwatch.api.v1.deckofcards.Constants;
+import com.qualcomm.toq.smartwatch.api.v1.deckofcards.DeckOfCardsEventListener;
+import com.qualcomm.toq.smartwatch.api.v1.deckofcards.remote.DeckOfCardsManagerListener;
 import com.qualcomm.toq.smartwatch.api.v1.deckofcards.card.Card;
 import com.qualcomm.toq.smartwatch.api.v1.deckofcards.card.ListCard;
 import com.qualcomm.toq.smartwatch.api.v1.deckofcards.card.NotificationTextCard;
 import com.qualcomm.toq.smartwatch.api.v1.deckofcards.card.SimpleTextCard;
 import com.qualcomm.toq.smartwatch.api.v1.deckofcards.remote.DeckOfCardsManager;
+import com.qualcomm.toq.smartwatch.api.v1.deckofcards.remote.DeckOfCardsManagerListener;
 import com.qualcomm.toq.smartwatch.api.v1.deckofcards.remote.RemoteDeckOfCards;
 import com.qualcomm.toq.smartwatch.api.v1.deckofcards.remote.RemoteDeckOfCardsException;
 import com.qualcomm.toq.smartwatch.api.v1.deckofcards.remote.RemoteResourceStore;
@@ -42,6 +48,8 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.Random;
 import java.util.List;
+
+import gmail.yuyang226.flickrj.sample.android.FlickrjActivity;
 
 
 public class ToqActivity extends Activity implements LocationListener {
@@ -68,8 +76,20 @@ public class ToqActivity extends Activity implements LocationListener {
     HashMap<String,String> fsmLeaderObjects;
     int i=0;
 
+    ListCard listCard;
+    SimpleTextCard simpleTextCard;
 
     /*End: For Location*/
+
+
+    private DeckOfCardsManagerListener deckOfCardsManagerListener;
+    private DeckOfCardsEventListener deckOfCardsEventListener;
+    private ToqAppStateBroadcastReceiver toqAppStateReceiver;
+    private ViewGroup notificationPanel;
+    private ViewGroup deckOfCardsPanel;
+    View installDeckOfCardsButton;
+    View uninstallDeckOfCardsButton;
+    private TextView statusTextView;
 
 
     @Override
@@ -315,12 +335,12 @@ public class ToqActivity extends Activity implements LocationListener {
 
             mCardImages = new CardImage[6];
             try{
-                mCardImages[0]= new CardImage("card.image.1", getBitmap("jack_weinberg_toq.png"));
-                mCardImages[1]= new CardImage("card.image.2", getBitmap("joan_baez_toq.png"));
-                mCardImages[2]= new CardImage("card.image.3", getBitmap("michael_rossman_toq.png"));
-                mCardImages[3]= new CardImage("card.image.4", getBitmap("art_goldberg_toq.png"));
-                mCardImages[4]= new CardImage("card.image.5", getBitmap("jackie_goldberg_toq.png"));
-                mCardImages[5]= new CardImage("card.image.6", getBitmap("mario_savio_toq.png"));
+                mCardImages[3]= new CardImage("card.image.1", getBitmap("jack_weinberg_toq.png"));
+                mCardImages[2]= new CardImage("card.image.2", getBitmap("joan_baez_toq.png"));
+                mCardImages[4]= new CardImage("card.image.3", getBitmap("michael_rossman_toq.png"));
+                mCardImages[1]= new CardImage("card.image.4", getBitmap("art_goldberg_toq.png"));
+                mCardImages[5]= new CardImage("card.image.5", getBitmap("jackie_goldberg_toq.png"));
+                mCardImages[0]= new CardImage("card.image.6", getBitmap("mario_savio_toq.png"));
             }
             catch (Exception e){
                 e.printStackTrace();
@@ -355,7 +375,7 @@ public class ToqActivity extends Activity implements LocationListener {
             mRemoteDeckOfCards.setLauncherIcons(mRemoteResourceStore, new DeckOfCardsLauncherIcon[]{whiteIcon, colorIcon});
 
             // Re-populate the resource store with any card images being used by any of the cards
-            for (Iterator<Card> it= mRemoteDeckOfCards.getListCard().iterator(); it.hasNext();){
+            /*for (Iterator<Card> it= mRemoteDeckOfCards.getListCard().iterator(); it.hasNext();){
 
                 String cardImageId= ((SimpleTextCard)it.next()).getCardImageId();
 
@@ -386,7 +406,10 @@ public class ToqActivity extends Activity implements LocationListener {
 
 
                 }
-            }
+            } */
+
+            System.out.println("@@@@@@@@@@@@@@@@%%%%%%%%%%%%%%%% mRemoteResourceStore = "+mRemoteResourceStore);
+
 
             //END: ADDED FROM init()
         }
@@ -447,9 +470,6 @@ public class ToqActivity extends Activity implements LocationListener {
         }
     }
 
-
-
-
     private void removeDeckOfCards() {
         ListCard listCard = mRemoteDeckOfCards.getListCard();
         if (listCard.size() == 0) {
@@ -481,8 +501,140 @@ public class ToqActivity extends Activity implements LocationListener {
         fsmLeaderObjects.put("Jackie Goldberg","Draw SLATE");
         // Create the resource store for icons and images
         mRemoteResourceStore= new RemoteResourceStore();
+        deckOfCardsManagerListener= new DeckOfCardsManagerListenerImpl();
+        deckOfCardsEventListener= new DeckOfCardsEventListenerImpl();
+        mDeckOfCardsManager.addDeckOfCardsManagerListener(deckOfCardsManagerListener);
+        mDeckOfCardsManager.addDeckOfCardsEventListener(deckOfCardsEventListener);
+
+        installDeckOfCardsButton = findViewById(R.id.install_button);
+        uninstallDeckOfCardsButton = findViewById(R.id.uninstall_button);
+        // Create the state receiver
+        toqAppStateReceiver= new ToqAppStateBroadcastReceiver();
+        // Register toq app state receiver
+
+        // Status
+        statusTextView= (TextView)findViewById(R.id.status_text);
+        statusTextView.setText("Initialised");
+
+        registerToqAppStateReceiver();
+
+        // If not connected, try to connect
+        if (!mDeckOfCardsManager.isConnected()){
+
+            setStatus(getString(R.string.status_connecting));
+
+            Log.d(Constants.TAG, "ToqApiDemo.onStart - not connected, connecting...");
+
+            try{
+                mDeckOfCardsManager.connect();
+            }
+            catch (RemoteDeckOfCardsException e){
+                Toast.makeText(this, getString(R.string.error_connecting_to_service), Toast.LENGTH_SHORT).show();
+                Log.e(Constants.TAG, "ToqApiDemo.onStart - error connecting to Toq app service", e);
+            }
+
+        }
+        else{
+            Log.d(Constants.TAG, "ToqApiDemo.onStart - already connected");
+            setStatus(getString(R.string.status_connected));
+            refreshUI();
+        }
 
 
+
+    }
+
+    // Register state receiver
+    private void registerToqAppStateReceiver(){
+        IntentFilter intentFilter= new IntentFilter();
+        intentFilter.addAction(Constants.BLUETOOTH_ENABLED_INTENT);
+        intentFilter.addAction(Constants.BLUETOOTH_DISABLED_INTENT);
+        intentFilter.addAction(Constants.TOQ_WATCH_PAIRED_INTENT);
+        intentFilter.addAction(Constants.TOQ_WATCH_UNPAIRED_INTENT);
+        intentFilter.addAction(Constants.TOQ_WATCH_CONNECTED_INTENT);
+        intentFilter.addAction(Constants.TOQ_WATCH_DISCONNECTED_INTENT);
+        getApplicationContext().registerReceiver(toqAppStateReceiver, intentFilter);
+    }
+
+
+
+    // Handle card events triggered by the user interacting with a card in the installed deck of cards
+    private class DeckOfCardsEventListenerImpl implements DeckOfCardsEventListener {
+
+        /**
+         * @see com.qualcomm.toq.smartwatch.api.v1.deckofcards.DeckOfCardsEventListener#onCardOpen(java.lang.String)
+         */
+        public void onCardOpen(final String cardId){
+            runOnUiThread(new Runnable(){
+                public void run(){
+                    Toast.makeText(ToqActivity.this, getString(R.string.event_card_open) + cardId, Toast.LENGTH_SHORT).show();
+
+                    System.out.println("&&&&&&&&&&&&&&&&&&&&& In onCardOpen &&&&&&&&&&&&&&&&&&&&&&");
+
+                    Intent intent = new Intent(getApplicationContext(), FSMToqActivity.class);
+
+                    startActivity(intent);
+
+
+                }
+            });
+        }
+
+        /**
+         * @see com.qualcomm.toq.smartwatch.api.v1.deckofcards.DeckOfCardsEventListener#onCardVisible(java.lang.String)
+         */
+        public void onCardVisible(final String cardId){
+            runOnUiThread(new Runnable(){
+                public void run(){
+                    Toast.makeText(ToqActivity.this, getString(R.string.event_card_visible) + cardId, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        /**
+         * @see com.qualcomm.toq.smartwatch.api.v1.deckofcards.DeckOfCardsEventListener#onCardInvisible(java.lang.String)
+         */
+        public void onCardInvisible(final String cardId){
+            runOnUiThread(new Runnable(){
+                public void run(){
+                    Toast.makeText(ToqActivity.this, getString(R.string.event_card_invisible) + cardId, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        /**
+         * @see com.qualcomm.toq.smartwatch.api.v1.deckofcards.DeckOfCardsEventListener#onCardClosed(java.lang.String)
+         */
+        public void onCardClosed(final String cardId){
+            runOnUiThread(new Runnable(){
+                public void run(){
+                    Toast.makeText(ToqActivity.this, getString(R.string.event_card_closed) + cardId, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        /**
+         * @see com.qualcomm.toq.smartwatch.api.v1.deckofcards.DeckOfCardsEventListener#onMenuOptionSelected(java.lang.String, java.lang.String)
+         */
+        public void onMenuOptionSelected(final String cardId, final String menuOption){
+            runOnUiThread(new Runnable(){
+                public void run(){
+                    Toast.makeText(ToqActivity.this, getString(R.string.event_menu_option_selected) + cardId + " [" + menuOption + "]", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        /**
+         * @see com.qualcomm.toq.smartwatch.api.v1.deckofcards.DeckOfCardsEventListener#onMenuOptionSelected(java.lang.String, java.lang.String, java.lang.String)
+         */
+        public void onMenuOptionSelected(final String cardId, final String menuOption, final String quickReplyOption){
+            runOnUiThread(new Runnable(){
+                public void run(){
+                    Toast.makeText(ToqActivity.this, getString(R.string.event_menu_option_selected) + cardId + " [" + menuOption + ":" + quickReplyOption +
+                            "]", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
 
     }
 
@@ -567,10 +719,10 @@ public class ToqActivity extends Activity implements LocationListener {
 
 
 
-        ListCard listCard =  new ListCard();// mRemoteDeckOfCards.getListCard();
+        listCard =  new ListCard();// mRemoteDeckOfCards.getListCard();
 
         // Create a SimpleTextCard with 1 + the current number of SimpleTextCards
-        SimpleTextCard simpleTextCard;
+
 
 
 
@@ -585,7 +737,9 @@ public class ToqActivity extends Activity implements LocationListener {
             simpleTextCard = new SimpleTextCard(Integer.toString(i));
             try {
 
-                 //simpleTextCard.setCardImage(mRemoteResourceStore,mCardImages[i]);
+                 mRemoteResourceStore.addResource(mCardImages[i]);
+
+                 simpleTextCard.setCardImage(mRemoteResourceStore,mCardImages[i]);
 
             }
             catch (Exception e){
@@ -595,9 +749,9 @@ public class ToqActivity extends Activity implements LocationListener {
             }
             simpleTextCard.setHeaderText(key);
             simpleTextCard.setTitleText(value);
-            String[] messages = {"Message: " + Integer.toString(i)};
-            simpleTextCard.setMessageText(messages);
-            simpleTextCard.setReceivingEvents(false);
+//            String[] messages = {"Message: " + Integer.toString(i)};
+//            simpleTextCard.setMessageText(messages);
+            simpleTextCard.setReceivingEvents(true);
             simpleTextCard.setShowDivider(true);
 
             listCard.add(simpleTextCard);
@@ -607,7 +761,7 @@ public class ToqActivity extends Activity implements LocationListener {
 
 
         try {
-            mDeckOfCardsManager.updateDeckOfCards(mRemoteDeckOfCards);
+            mDeckOfCardsManager.updateDeckOfCards(mRemoteDeckOfCards,mRemoteResourceStore);
         } catch (RemoteDeckOfCardsException e) {
             e.printStackTrace();
             Toast.makeText(this, "Failed to Create SimpleTextCard", Toast.LENGTH_SHORT).show();
@@ -615,6 +769,210 @@ public class ToqActivity extends Activity implements LocationListener {
         return new RemoteDeckOfCards(this, listCard);
     }
 
+    // Toq app state receiver
+    private class ToqAppStateBroadcastReceiver extends BroadcastReceiver{
+
+        /**
+         * @see android.content.BroadcastReceiver#onReceive(android.content.Context, android.content.Intent)
+         */
+        public void onReceive(Context context, Intent intent){
+
+            String action= intent.getAction();
+
+            if (action == null){
+                Log.w(Constants.TAG, "ToqApiDemo.ToqAppStateBroadcastReceiver.onReceive - action is null, returning");
+                return;
+            }
+
+            Log.d(Constants.TAG, "ToqApiDemo.ToqAppStateBroadcastReceiver.onReceive - action: " + action);
+
+            // If watch is now connected, refresh UI
+            if (action.equals(Constants.TOQ_WATCH_CONNECTED_INTENT)){
+                Toast.makeText(ToqActivity.this, getString(R.string.intent_toq_watch_connected), Toast.LENGTH_SHORT).show();
+                refreshUI();
+            }
+            // Else if watch is now disconnected, disable UI
+            else if (action.equals(Constants.TOQ_WATCH_DISCONNECTED_INTENT)){
+                Toast.makeText(ToqActivity.this, getString(R.string.intent_toq_watch_disconnected), Toast.LENGTH_SHORT).show();
+                disableUI();
+            }
+
+        }
+
+    }
+
+    // Connected to Toq app service, so refresh the UI
+    private void refreshUI(){
+
+        try{
+
+            // If Toq watch is connected
+            if (mDeckOfCardsManager.isToqWatchConnected()){
+
+                // If the deck of cards applet is already installed
+                if (mDeckOfCardsManager.isInstalled()){
+                    Log.d(Constants.TAG, "ToqApiDemo.refreshUI - already installed");
+                    updateUIInstalled();
+                }
+                // Else not installed
+                else{
+                    Log.d(Constants.TAG, "ToqApiDemo.refreshUI - not installed");
+                    updateUINotInstalled();
+                }
+
+            }
+            // Else not connected to the Toq app
+            else{
+                Log.d(Constants.TAG, "ToqApiDemo.refreshUI - Toq watch is disconnected");
+                Toast.makeText(ToqActivity.this, getString(R.string.intent_toq_watch_disconnected), Toast.LENGTH_SHORT).show();
+                disableUI();
+            }
+
+        }
+        catch (RemoteDeckOfCardsException e){
+            Toast.makeText(this, getString(R.string.error_checking_status), Toast.LENGTH_SHORT).show();
+            Log.e(Constants.TAG, "ToqApiDemo.refreshUI - error checking if Toq watch is connected or deck of cards is installed", e);
+        }
+
+    }
+
+    // Disable all UI components
+    private void disableUI(){
+        // Disable everything
+        setChildrenEnabled(deckOfCardsPanel, false);
+        setChildrenEnabled(notificationPanel, false);
+    }
+
+    // Enable/Disable a view group's children and nested children
+    private void setChildrenEnabled(ViewGroup viewGroup, boolean isEnabled){
+
+        for (int i = 0; i < viewGroup.getChildCount();  i++){
+
+            View view= viewGroup.getChildAt(i);
+
+            if (view instanceof ViewGroup){
+                setChildrenEnabled((ViewGroup)view, isEnabled);
+            }
+            else{
+                view.setEnabled(isEnabled);
+            }
+
+        }
+
+    }
+
+    // Set up UI for when deck of cards applet is already installed
+    private void updateUIInstalled(){
+
+        // Panels
+        notificationPanel= (ViewGroup)findViewById(R.id.notification_panel);
+        deckOfCardsPanel= (ViewGroup)findViewById(R.id.doc_panel);
+
+        // Enable everything
+        setChildrenEnabled(deckOfCardsPanel, true);
+        setChildrenEnabled(notificationPanel, true);
+
+        // Install disabled; update, uninstall enabled
+        installDeckOfCardsButton.setEnabled(false);
+
+        uninstallDeckOfCardsButton.setEnabled(true);
+
+
+    }
+
+    // Set up UI for when deck of cards applet is not installed
+    private void updateUINotInstalled(){
+
+        // Disable notification panel
+        setChildrenEnabled(notificationPanel, false);
+
+        // Enable deck of cards panel
+        setChildrenEnabled(deckOfCardsPanel, true);
+
+
+
+        // Install enabled; update, uninstall disabled
+        installDeckOfCardsButton.setEnabled(true);
+
+        uninstallDeckOfCardsButton.setEnabled(false);
+
+        // Focus
+        installDeckOfCardsButton.requestFocus();
+    }
+
+
+
+
+    // Handle service connection lifecycle and installation events
+    private class DeckOfCardsManagerListenerImpl implements DeckOfCardsManagerListener{
+
+        /**
+         * @see com.qualcomm.toq.smartwatch.api.v1.deckofcards.remote.DeckOfCardsManagerListener#onConnected()
+         */
+        public void onConnected(){
+            runOnUiThread(new Runnable(){
+                public void run(){
+                    setStatus(getString(R.string.status_connected));
+                    refreshUI();
+                }
+            });
+        }
+
+        /**
+         * @see com.qualcomm.toq.smartwatch.api.v1.deckofcards.remote.DeckOfCardsManagerListener#onDisconnected()
+         */
+        public void onDisconnected(){
+            runOnUiThread(new Runnable(){
+                public void run(){
+                    setStatus(getString(R.string.status_disconnected));
+                    disableUI();
+                }
+            });
+        }
+
+        /**
+         * @see com.qualcomm.toq.smartwatch.api.v1.deckofcards.remote.DeckOfCardsManagerListener#onInstallationSuccessful()
+         */
+        public void onInstallationSuccessful(){
+            runOnUiThread(new Runnable(){
+                public void run(){
+                    setStatus(getString(R.string.status_installation_successful));
+                    updateUIInstalled();
+                }
+            });
+        }
+
+        /**
+         * @see com.qualcomm.toq.smartwatch.api.v1.deckofcards.remote.DeckOfCardsManagerListener#onInstallationDenied()
+         */
+        public void onInstallationDenied(){
+            runOnUiThread(new Runnable(){
+                public void run(){
+                    setStatus(getString(R.string.status_installation_denied));
+                    updateUINotInstalled();
+                }
+            });
+        }
+
+        /**
+         * @see com.qualcomm.toq.smartwatch.api.v1.deckofcards.remote.DeckOfCardsManagerListener#onUninstalled()
+         */
+        public void onUninstalled(){
+            runOnUiThread(new Runnable(){
+                public void run(){
+                    setStatus(getString(R.string.status_uninstalled));
+                    updateUINotInstalled();
+                }
+            });
+        }
+
+    }
+
+
+    // Set status bar message
+    private void setStatus(String msg){
+        statusTextView.setText(msg);
+    }
 
 
 }

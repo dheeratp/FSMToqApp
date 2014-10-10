@@ -55,6 +55,28 @@
         android:text="Remove 1st SimpleTextCard"
         android:layout_gravity="center_horizontal"
         />
+    <LinearLayout
+        android:id="@+id/doc_panel"
+        android:layout_margin="5dp"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" >
+        </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/notification_panel"
+        android:layout_margin="5dp"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" >
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/status_text"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:textAppearance="?android:attr/textAppearanceMedium" />
 
 
 </LinearLayout>

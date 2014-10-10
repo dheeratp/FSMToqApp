@@ -25,5 +25,24 @@
     <string name="error_initialising_card_images">Can\'t initialize card images</string>
     <string name="error_uninstalling_deck_of_cards">Can\'t uninstall deck of cards</string>
     <string name="already_uninstalled">App is already uninstalled</string>
+    <string name="event_card_open">"Card open: "</string>
+    <string name="event_card_visible">"Card visible: "</string>
+    <string name="event_card_invisible">"Card invisible: "</string>
+    <string name="event_card_closed">"Card closed: "</string>
+    <string name="event_menu_option_selected">"Menu option selected: "</string>
+
+    <string name="intent_toq_watch_connected">Toq watch is connected to Toq app</string>
+    <string name="intent_toq_watch_disconnected">Toq watch is disconnected from Toq app</string>
+    <string name="error_checking_status">Error checking if Toq watch is connected or deck of cards is installed</string>
+    <string name="notification_panel">Notification</string>
+    <string name="doc_panel">Deck Of Cards</string>
+
+    <string name="status_connecting">Connecting&#8230;</string>
+    <string name="status_disconnected">Disconnected from Toq app service</string>
+    <string name="status_installation_successful">Deck of cards installed successfully</string>
+    <string name="status_installation_denied">Deck of cards installation denied</string>
+    <string name="status_connected">Connected to Toq app service</string>
+    <string name="status_uninstalled">Deck of cards uninstalled</string>
+    <string name="error_connecting_to_service">Error connecting to Toq app service</string>
 
 </resources>

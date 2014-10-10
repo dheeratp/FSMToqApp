@@ -329,6 +329,29 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
                             public void run() {
                                 //COMMENTED BY DHEERA ImageView imageView = (ImageView) findViewById(R.id.imview);
                                 //COMMENTED BY DHEERA imageView.setImageBitmap(bm);
+
+                        try{
+                                Bitmap save = Bitmap.createBitmap(250, 288, Bitmap.Config.ARGB_8888);
+                                Paint paint = new Paint();
+                                paint.setColor(Color.WHITE);
+                                Canvas now = new Canvas(save);
+                                now.drawRect(new Rect(0, 0, 250, 288), paint);
+                                now.drawBitmap(bm, new Rect(0, 0, bm.getWidth(), bm.getHeight()), new Rect(0, 0, 250, 288), null);
+
+
+                                File file = new File(Environment.getExternalStorageDirectory(), System.currentTimeMillis() + ".png");
+                                file.createNewFile();
+                                OutputStream stream = new FileOutputStream(file);
+
+                                save.compress(Bitmap.CompressFormat.PNG, 100, stream);
+
+                                //Write code for updating cards with a new image
+
+                            }
+                                catch (Exception e) {
+                                    Toast.makeText(FSMToqActivity.this, "Save failed", Toast.LENGTH_SHORT).show();
+                                    e.printStackTrace();
+                                }
                             }
                         });
                     }
