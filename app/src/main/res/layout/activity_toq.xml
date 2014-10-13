@@ -1,36 +1,14 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
     android:orientation="vertical"
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
     android:paddingBottom="@dimen/activity_vertical_margin"
+    android:background="@drawable/megaphoneboyfinal"
     tools:context=".ToqActivity">
-
-
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_gravity="center_horizontal">
-
-        <Button
-            android:id="@+id/install_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Install"
-            android:layout_gravity="center_horizontal"/>
-
-        <Button
-            android:id="@+id/uninstall_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Uninstall"
-            android:layout_gravity="center_horizontal"/>
-    </LinearLayout>
-
 
     <Button
         android:id="@+id/send_notif_button"
@@ -47,14 +25,14 @@
            android:text="Add SimpleTextCard"
            android:layout_gravity="center_horizontal"
        />-->
-
+<!--
   <Button
         android:id="@+id/remove_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Remove 1st SimpleTextCard"
         android:layout_gravity="center_horizontal"
-        />
+        /> -->
     <LinearLayout
         android:id="@+id/doc_panel"
         android:layout_margin="5dp"
@@ -79,4 +57,63 @@
         android:textAppearance="?android:attr/textAppearanceMedium" />
 
 
-</LinearLayout>
+    <RelativeLayout
+        android:id="@+id/InnerRelativeLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true" >
+
+        <!--<LinearLayout-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:orientation="horizontal"-->
+        <!--android:layout_gravity="center_horizontal">-->
+
+
+
+        <!-- android:layout_width="270dp"
+            android:layout_height="60dp" android:layout_width="wrap_content"
+        android:layout_height="wrap_content"-->
+
+
+
+        <Button
+            android:id="@+id/uninstall_button"
+            android:text="UNINSTALL"
+            android:layout_alignParentRight="true"
+
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+
+            android:layout_width="135dp"
+            android:layout_height="50dp"
+            android:background="@drawable/buttonshape"
+            android:shadowColor="#A8A8A8"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="0"
+            />
+
+
+
+        <Button
+            android:id="@+id/install_button"
+
+            android:text="INSTALL"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+
+            android:layout_width="135dp"
+            android:layout_height="50dp"
+            android:background="@drawable/buttonshape"
+            android:shadowColor="#A8A8A8"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="0"
+
+            />
+
+
+    </RelativeLayout>
+
+</RelativeLayout>

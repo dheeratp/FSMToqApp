@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.widget.Toast;
 
+import dheera.cs160.berkeley.edu.fsmtoqapp.ToqActivity;
 import gmail.yuyang226.flickrj.sample.android.tasks.GetOAuthTokenTask;
 import gmail.yuyang226.flickrj.sample.android.tasks.OAuthTask;
 import gmail.yuyang226.flickrj.sample.android.tasks.UploadPhotoTask;
@@ -48,6 +49,7 @@ public class FlickrjActivity extends Activity {
 				h.post(init);
 			};
 		}.start();
+
 	}
 
 	Handler h = new Handler();
@@ -59,7 +61,13 @@ public class FlickrjActivity extends Activity {
 			if (oauth == null || oauth.getUser() == null) {
 				OAuthTask task = new OAuthTask(getContext());
 				task.execute();
+
+
 			} else {
+//                //System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+//                Intent intent = new Intent(getApplicationContext(), ToqActivity.class);
+//
+//                startActivity(intent);
 				load(oauth);
 			}
 		}

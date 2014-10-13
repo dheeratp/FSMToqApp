@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">FSMToqApp</string>
-    <string name="select_color">Select Color</string>
+    <string name="app_name">Support Free Speech</string>
+    <string name="select_color">Color</string>
+    <string name="select_shape">Shape</string>
+    <string name="select_eraser">Eraser</string>
+
     <string name="action_settings">Settings</string>
 
     <style name="button_text">
@@ -44,5 +47,6 @@
     <string name="status_connected">Connected to Toq app service</string>
     <string name="status_uninstalled">Deck of cards uninstalled</string>
     <string name="error_connecting_to_service">Error connecting to Toq app service</string>
+
 
 </resources>

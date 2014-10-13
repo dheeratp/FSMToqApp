@@ -9,11 +9,13 @@ import java.io.FileInputStream;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.Toast;
 import java.util.ArrayList;
 
+import dheera.cs160.berkeley.edu.fsmtoqapp.ToqActivity;
 import gmail.yuyang226.flickrj.sample.android.FlickrHelper;
 import gmail.yuyang226.flickrj.sample.android.FlickrjActivity;
 import com.googlecode.flickrjandroid.Flickr;
@@ -46,7 +48,7 @@ public class UploadPhotoTask extends AsyncTask<OAuth, Void, String> {
 	protected void onPreExecute() {
 		super.onPreExecute();
 		mProgressDialog = ProgressDialog.show(flickrjAndroidSampleActivity,
-				"", "Uploading..."); //$NON-NLS-1$ //$NON-NLS-2$
+				"", "Uploading to Flickr..."); //$NON-NLS-1$ //$NON-NLS-2$
 		mProgressDialog.setCanceledOnTouchOutside(true);
 		mProgressDialog.setCancelable(true);
 		mProgressDialog.setOnCancelListener(new OnCancelListener() {
@@ -109,7 +111,8 @@ public class UploadPhotoTask extends AsyncTask<OAuth, Void, String> {
 		}
 
 		Toast.makeText(flickrjAndroidSampleActivity.getApplicationContext(),
-				response, Toast.LENGTH_SHORT).show();
+				"Successfully uploaded to Flickr! Check your Toq for more!", Toast.LENGTH_SHORT).show();
+
 
 	}
 

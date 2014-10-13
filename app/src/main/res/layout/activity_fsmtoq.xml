@@ -22,7 +22,7 @@
         android:orientation="horizontal"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:paddingBottom="30dp"
+        android:paddingBottom="5dp"
         android:id="@+id/First">
 
     <TextView
@@ -31,33 +31,139 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:paddingRight="5dp"
-        android:paddingLeft="1dp"
+        android:paddingLeft="20dp"
         style="@style/ToqDrawingFont"/>
 
 
     <Spinner
         android:id="@+id/colors_spinner"
+        android:layout_height="fill_parent"
+        android:layout_width="50dip"
+        android:paddingLeft="5dp"
+        android:paddingRight="5dp"
+       />
+
+   <TextView
+            android:id="@+id/textView_select_shape"
+            android:text="@string/select_shape"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingRight="5dp"
+            android:paddingLeft="5dp"
+            style="@style/ToqDrawingFont"
+            />
+
+   <Spinner
+            android:id="@+id/shape_spinner"
+            android:layout_height="fill_parent"
+            android:layout_width="50dip"
+            android:paddingLeft="5dp"
+            android:paddingRight="5dp"
+            style="@style/ToqDrawingFont"/>
+
+     <TextView
+            android:id="@+id/erasertext"
+            android:layout_toRightOf="@id/shape_spinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingRight="5dp"
+            android:paddingLeft="5dp"
+            android:text="Eraser"
+            style="@style/ToqDrawingFont" />
+        <ImageButton
+            android:id="@+id/eraserbutton"
+            android:layout_toRightOf="@id/erasertext"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/eraser" />
+
+   <!--     <ImageButton
+            android:id="@+id/circle"
+            android:layout_toRightOf="@id/shape_spinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/circle" />
+
+        <ImageButton
+            android:id="@+id/square"
+            android:layout_toRightOf="@id/circle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/square" /> -->
+    </LinearLayout>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="fill_parent"
         android:layout_height="wrap_content"
+        android:paddingBottom="5dp"
+        android:id="@+id/Second">
+
+        <TextView
+            android:id="@+id/slider"
+            android:layout_toRightOf="@id/slider"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingRight="5dp"
+            android:paddingLeft="20dp"
+            android:text="Brush Size"
+            style="@style/ToqDrawingFont" />
+
+    <SeekBar
+        android:id="@+id/seek1"
+        android:layout_toRightOf="@id/slider"
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="0dp"
+        android:progress="10"
+        android:max="100"
+        android:paddingRight="0dp"
+        android:paddingLeft="5dp"
+        />
+       <!-- android:secondaryProgress="10"-->
+
+    <TextView
+        android:id="@+id/textView1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingRight="0dp"
+        android:paddingLeft="0dp"
         style="@style/ToqDrawingFont"/>
 
-
-
+    <ImageButton
+            android:id="@+id/clearButton"
+            android:layout_toRightOf="@id/textView1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/newscreen" />
 
     </LinearLayout>
 
-    <ImageButton
-        android:id="@+id/eraserbutton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:src="@drawable/eraser" />
 
-    <Button
-        android:background="@drawable/red_button"
-        android:id="@+id/saveimage"
+
+    <LinearLayout
+        android:id="@+id/Third"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:text="Submit"
-        style="@style/button_text" />
+        android:gravity="center"
+        android:paddingBottom="5dp"
+        android:orientation="vertical" >
+
+
+        <Button
+            android:background="@drawable/buttonshape"
+            android:id="@+id/saveimage"
+            android:layout_width="135dp"
+            android:layout_height="50dp"
+            android:text="UPLOAD"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:shadowColor="#A8A8A8"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="0" />
+
+    </LinearLayout>
 
 
 </LinearLayout>

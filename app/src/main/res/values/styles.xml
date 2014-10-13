@@ -6,10 +6,15 @@
     </style>
 
     <style name="ToqDrawingFont" parent="@android:style/TextAppearance.Medium">
-        <item name="android:layout_width">fill_parent</item>
-        <item name="android:layout_height">wrap_content</item>
+        <!--<item name="android:layout_width">fill_parent</item>-->
+        <!--<item name="android:layout_height">wrap_content</item>-->
         <item name="android:textColor">#555555</item>
         <item name="android:typeface">monospace</item>
-        <item name="android:textSize">10sp</item>
+        <item name="android:textSize">15sp</item>
     </style>
+    <color name="default_screen_bg">#f9f9f9</color>
+    <color name="rounded_container_bg">#222222</color>
+    <color name="rounded_container_border">#3b3f44</color>
+    <color name="light_gray_header_color">#646663</color>
+
 </resources>

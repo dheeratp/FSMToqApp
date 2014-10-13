@@ -13,8 +13,11 @@ import android.os.Bundle;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.Menu;
+import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
@@ -28,7 +31,7 @@ import android.view.MenuItem;
 import android.widget.TextView;
 import android.graphics.Paint;
 import android.graphics.Path;
-
+import android.widget.SeekBar;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -44,7 +47,7 @@ import android.view.Display;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
 import java.util.Random;
-
+import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.util.Config;
 import android.graphics.Rect;
 import android.provider.MediaStore;
@@ -65,6 +68,11 @@ import com.googlecode.flickrjandroid.photos.Photo;
 import com.googlecode.flickrjandroid.photos.PhotoList;
 import com.googlecode.flickrjandroid.photos.PhotosInterface;
 import com.googlecode.flickrjandroid.photos.SearchParameters;
+import com.qualcomm.toq.smartwatch.api.v1.deckofcards.card.ListCard;
+import com.qualcomm.toq.smartwatch.api.v1.deckofcards.card.SimpleTextCard;
+import com.qualcomm.toq.smartwatch.api.v1.deckofcards.remote.RemoteDeckOfCardsException;
+import com.qualcomm.toq.smartwatch.api.v1.deckofcards.resource.CardImage;
+
 import gmail.yuyang226.flickrj.sample.android.FlickrHelper;
 import org.json.JSONException;
 
@@ -79,11 +87,17 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
 
     // stores the spinner item names
     private String[] spinnerNameArray = { "Black", "Red", "Blue", "Green" };
+    private String[] spinnerShapeNameArray = { "None","Circle", "Square"};
+
     ArrayList<HashMap> spinnerList = new ArrayList<HashMap>();
+    ArrayList<HashMap> spinnerShapeList = new ArrayList<HashMap>();
+
     HashMap map;
     Spinner mySpinner;
+    Spinner myShapeSpinner;
     static DrawingView myViewInstance;
     ImageButton eraserButton;
+    ImageButton clearButton;
     Button saveButton;
     private static Bitmap baseBitmap;
     public static final int BUFFER_SIZE = 1024 * 8;
@@ -105,6 +119,9 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
     // The minimum time between updates in milliseconds
     private static final long MIN_TIME_BW_UPDATES = 1000 * 60 * 1; // 1 minute
 
+    private SeekBar brushSize = null;
+    int progressChanged = 10;
+    private TextView progressbarText;
 
 
     @Override
@@ -112,31 +129,95 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_fsmtoq);
         //setContentView(new DrawingView(this, null));
+        myViewInstance = (DrawingView)findViewById(R.id.drawing); //new DrawingView(this);
+        myViewInstance.setDrawingCacheEnabled(true);
+        myViewInstance.buildDrawingCache();
+
+        //Start: for brush size
+        brushSize = (SeekBar) findViewById(R.id.seek1);
+        progressbarText = (TextView) findViewById(R.id.textView1);
+
+        progressbarText.setText(brushSize.getProgress() + "");
 
 
 
+        brushSize.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+
+
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+
+                progressChanged = progress;
+
+                myViewInstance.setCustomStroke(progressChanged);
+            }
+
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                //Toast.makeText(getApplicationContext(), "Started tracking seekbar", Toast.LENGTH_SHORT).show();
+            }
+
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                progressbarText.setText(progressChanged + "");
+
+                //Toast.makeText(FSMToqActivity.this,"seek bar progress:"+progressChanged,Toast.LENGTH_SHORT).show();
+            }
+
+        });
+        //End: for brush size
 
         mySpinner = (Spinner)findViewById(R.id.colors_spinner);
         mySpinner.setAdapter(new ColorsAdapter(FSMToqActivity.this, R.layout.colors_spinner, spinnerNameArray));
         mySpinner.setOnItemSelectedListener(this);
 
+        //start:shape initialization
+        myShapeSpinner = (Spinner)findViewById(R.id.shape_spinner);
+        myShapeSpinner.setAdapter(new ShapesAdapter(FSMToqActivity.this, R.layout.shapes_spinner, spinnerShapeNameArray));
+        myShapeSpinner.setOnItemSelectedListener(this);
+        //end:shape initialization
+
+
+
         initializeImageList();
 
-        myViewInstance = (DrawingView)findViewById(R.id.drawing); //new DrawingView(this);
-        myViewInstance.setDrawingCacheEnabled(true);
-        myViewInstance.buildDrawingCache();
+
 
         addListenerOnEraserButton();
         addListenerOnSaveButton();
+        addListenerOnClearButton();
+
 
 
     }
+    public void addListenerOnClearButton()
+    {
+        clearButton = (ImageButton) findViewById(R.id.clearButton);
+        clearButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View arg0) {
+
+                AlertDialog.Builder newDialog = new AlertDialog.Builder(FSMToqActivity.this);
+                newDialog.setTitle("Clear drawing");
+                newDialog.setMessage("Are you sure?");
+                newDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener(){
+                    public void onClick(DialogInterface dialog, int which){
+                        //System.out.println("You clicked ok to clear!");
+                        myViewInstance.startNew();
+                        dialog.dismiss();
+                    }
+                });
+                newDialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener(){
+                    public void onClick(DialogInterface dialog, int which){
+                        //System.out.println("You clicked cancel!");
+
+                        dialog.cancel();
+                    }
+                });
+                newDialog.show();
+            }
+
+        });
 
 
-
-
-
-
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -148,13 +229,30 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
 
     public void onItemSelected(AdapterView<?> parent, View view, int pos,long id) {
         //Toast.makeText(parent.getContext(), "OnItemSelectedListener : " + parent.getItemAtPosition(pos).toString().toLowerCase(), Toast.LENGTH_SHORT).show();
+        Spinner spinner = (Spinner) parent;;
+        String newColorStr;
+        String newShapeStr;
 
-        String newColorStr = parent.getItemAtPosition(pos).toString().toLowerCase();
 
-        myViewInstance.setColor(newColorStr,20);
+        if(spinner.getId()== R.id.colors_spinner) {
+            myViewInstance.setErase(false);
+            newColorStr = parent.getItemAtPosition(pos).toString().toLowerCase();
+            //Toast.makeText(FSMToqActivity.this, "Color changed"+newColorStr, Toast.LENGTH_SHORT).show();
 
+            myViewInstance.setColor(newColorStr,progressChanged);
+
+        }else if(spinner.getId()== R.id.shape_spinner)
+        {
+            myViewInstance.setErase(false);
+             newShapeStr = parent.getItemAtPosition(pos).toString().toLowerCase();
+            //Toast.makeText(FSMToqActivity.this, "shape changed"+newShapeStr, Toast.LENGTH_SHORT).show();
+
+            myViewInstance.setShape(newShapeStr);
+
+        }
 
     }
+
     @Override
     public void onNothingSelected(AdapterView<?> arg0) {
         // TODO Auto-generated method stub
@@ -190,9 +288,24 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
             map.put("Icon", image);
             spinnerList.add(map);
         }
-        //ImageView imageView = new ImageView(this);
-        //imageView.setBackgroundResource((spinnerList.get(0).get("Icon")));
-       // spinnerList.get(0).get("Name");
+        // TODO Auto-generated method stub
+        for (int i = 0; i < spinnerShapeNameArray.length; i++) {
+            map = new HashMap<String, Object>();
+
+            map.put("Name", spinnerShapeNameArray[i]);
+
+            //myImageView.setImageResource(id);
+
+            //int imageResource = getResources().getIdentifier(uri, null, getPackageName());
+
+            ImageView image = (ImageView) findViewById(getResources().getIdentifier(spinnerShapeNameArray[i].toLowerCase(), "id", getPackageName()));
+
+            map.put("Icon", image);
+            spinnerShapeList.add(map);
+        }
+//        ImageView imageView = new ImageView(this);
+//        imageView.setBackgroundResource((spinnerList.get(0).get("Icon")));
+//        spinnerList.get(0).get("Name");
 
         //color = (new MyOnItemSelectedListener()).selectedColor;
 
@@ -205,9 +318,9 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
             @Override
             public void onClick(View arg0) {
 
-               // Toast.makeText(FSMToqActivity.this  "Eraser has been clicked!", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(FSMToqActivity.this  "Eraser has been clicked!", Toast.LENGTH_SHORT).show();
 
-                myViewInstance.setColor("white",40);
+                myViewInstance.setErase(true);
 
             }
 
@@ -234,57 +347,55 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
     /**
      114      * Save the image to the SD card.
      115      */
-     protected void saveBitmap() {
-           try {
-                   // Save the image to the SD card.
+    protected void saveBitmap() {
+        try {
+            // Save the image to the SD card.
 
 
-               Bitmap well = myViewInstance.getBitmap();
-               Bitmap save = Bitmap.createBitmap(320, 480, Bitmap.Config.ARGB_8888);
-               Paint paint = new Paint();
-               paint.setColor(Color.WHITE);
-               Canvas now = new Canvas(save);
-               now.drawRect(new Rect(0,0,320,480), paint);
-               now.drawBitmap(well, new Rect(0,0,well.getWidth(),well.getHeight()), new Rect(0,0,320,480), null);
+            Bitmap well = myViewInstance.getBitmap();
+            Bitmap save = Bitmap.createBitmap(320, 480, Bitmap.Config.ARGB_8888);
+            Paint paint = new Paint();
+            paint.setColor(Color.WHITE);
+            Canvas now = new Canvas(save);
+            now.drawRect(new Rect(0,0,320,480), paint);
+            now.drawBitmap(well, new Rect(0,0,well.getWidth(),well.getHeight()), new Rect(0,0,320,480), null);
 
 
+            File file = new File(Environment.getExternalStorageDirectory(), System.currentTimeMillis() + ".png");
+            file.createNewFile();
+            OutputStream stream = new FileOutputStream(file);
 
-               File file = new File(Environment.getExternalStorageDirectory(), System.currentTimeMillis() + ".png");
-                file.createNewFile();
-                     OutputStream stream = new FileOutputStream(file);
-
-               save.compress(Bitmap.CompressFormat.PNG, 100, stream);
+            save.compress(Bitmap.CompressFormat.PNG, 100, stream);
 
 
-                     Toast.makeText(FSMToqActivity.this, "Saved!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(FSMToqActivity.this, "Saved to phone!", Toast.LENGTH_SHORT).show();
 
-               //MediaStore.Images.Media.insertImage(getApplicationContext().getContentResolver(), file.getAbsolutePath(), file.getName(), file.getName());
+            //MediaStore.Images.Media.insertImage(getApplicationContext().getContentResolver(), file.getAbsolutePath(), file.getName(), file.getName());
 
-               /* START: FOR UPLOADING TO FLICKR */
-               showImage();
-               Intent intent = new Intent(getApplicationContext(), FlickrjActivity.class);
-               intent.putExtra("flickImagePath", file.getAbsolutePath());
+            /* START: FOR UPLOADING TO FLICKR */
+            showImage();
+            Intent intent = new Intent(getApplicationContext(), FlickrjActivity.class);
+            intent.putExtra("flickImagePath", file.getAbsolutePath());
 
-               startActivity(intent);
+            startActivity(intent);
 
 
                 /* END : FOR UPLOADING TO FLICKR */
 
 
 
-                   // Android equipment Gallery application will only at boot time scanning system folder
-                    // The simulation of a media loading broadcast, for the preservation of images can be viewed in Gallery
+            // Android equipment Gallery application will only at boot time scanning system folder
+            // The simulation of a media loading broadcast, for the preservation of images can be viewed in Gallery
 
-                    intent.setAction(Intent.ACTION_MEDIA_MOUNTED);
-                    intent.setData(Uri.fromFile(Environment
-                                     .getExternalStorageDirectory()));
-                   // sendBroadcast(intent);
+            //intent.setAction(Intent.ACTION_MEDIA_MOUNTED);
+            //intent.setData(Uri.fromFile(Environment.getExternalStorageDirectory()));
+            // sendBroadcast(intent);
 
-                  } catch (Exception e) {
-                     Toast.makeText(FSMToqActivity.this, "Save failed", Toast.LENGTH_SHORT).show();
-                      e.printStackTrace();
-                   }
-       }
+        } catch (Exception e) {
+            //Toast.makeText(FSMToqActivity.this, "Save failed", Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
+    }
 
     private void showImage() {
         Thread thread = new Thread() {
@@ -330,26 +441,60 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
                                 //COMMENTED BY DHEERA ImageView imageView = (ImageView) findViewById(R.id.imview);
                                 //COMMENTED BY DHEERA imageView.setImageBitmap(bm);
 
-                        try{
-                                Bitmap save = Bitmap.createBitmap(250, 288, Bitmap.Config.ARGB_8888);
-                                Paint paint = new Paint();
-                                paint.setColor(Color.WHITE);
-                                Canvas now = new Canvas(save);
-                                now.drawRect(new Rect(0, 0, 250, 288), paint);
-                                now.drawBitmap(bm, new Rect(0, 0, bm.getWidth(), bm.getHeight()), new Rect(0, 0, 250, 288), null);
+                                try{
+                                    Bitmap save = Bitmap.createBitmap(250, 288, Bitmap.Config.ARGB_8888);
+                                    Paint paint = new Paint();
+                                    paint.setColor(Color.WHITE);
+                                    Canvas now = new Canvas(save);
+                                    now.drawRect(new Rect(0, 0, 250, 288), paint);
+                                    now.drawBitmap(bm, new Rect(0, 0, bm.getWidth(), bm.getHeight()), new Rect(0, 0, 250, 288), null);
 
 
-                                File file = new File(Environment.getExternalStorageDirectory(), System.currentTimeMillis() + ".png");
-                                file.createNewFile();
-                                OutputStream stream = new FileOutputStream(file);
+                                    File file = new File(Environment.getExternalStorageDirectory(), System.currentTimeMillis() + ".png");
+                                    file.createNewFile();
+                                    OutputStream stream = new FileOutputStream(file);
 
-                                save.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                                    save.compress(Bitmap.CompressFormat.PNG, 100, stream);
 
-                                //Write code for updating cards with a new image
+                                    //START: Write code for updating cards with a new image
+                                    Bitmap resizedBitmap = Bitmap.createScaledBitmap(bm, 250, 288, false);
 
-                            }
+                                    //System.out.println("!!!!!!!!!"+ ToqActivity.mRemoteDeckOfCards);
+                                    ListCard listCard = ToqActivity.mRemoteDeckOfCards.getListCard();
+                                    int currSize = listCard.size();
+
+                                    //System.out.println("############## current size of listcard ############# = "+ currSize);
+                                    // Create a SimpleTextCard with 1 + the current number of SimpleTextCards
+                                    SimpleTextCard simpleTextCard = new SimpleTextCard(Integer.toString(currSize+1));
+
+                                    simpleTextCard.setHeaderText("Here's a Flickr image just for you.. ");
+                                    simpleTextCard.setTitleText("#cs160fsm");
+                                    // String[] messages = {"Select this card to view it"};
+                                    // simpleTextCard.setMessageText(messages);
+                                    // simpleTextCard.setReceivingEvents(true);
+                                    simpleTextCard.setShowDivider(true);
+
+
+
+                                    CardImage mCardImage= new CardImage("card.image.7", resizedBitmap);
+                                    ToqActivity.mRemoteResourceStore.addResource(mCardImage);
+
+                                    simpleTextCard.setCardImage(ToqActivity.mRemoteResourceStore,mCardImage);
+
+
+                                    listCard.add(simpleTextCard);
+
+                                    try {
+                                        ToqActivity.mDeckOfCardsManager.updateDeckOfCards(ToqActivity.mRemoteDeckOfCards,ToqActivity.mRemoteResourceStore);
+                                    } catch (RemoteDeckOfCardsException e) {
+                                        e.printStackTrace();
+                                        //Toast.makeText(FSMToqActivity.this, "Failed to Create SimpleTextCard", Toast.LENGTH_SHORT).show();
+                                    }
+
+                                    //END: Write code for updating cards with a new image
+                                }
                                 catch (Exception e) {
-                                    Toast.makeText(FSMToqActivity.this, "Save failed", Toast.LENGTH_SHORT).show();
+                                    //Toast.makeText(FSMToqActivity.this, "Save failed", Toast.LENGTH_SHORT).show();
                                     e.printStackTrace();
                                 }
                             }
@@ -374,16 +519,17 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
 
     public static class DrawingView extends View  {
         // Paint
-        private Paint drawPaint = new Paint();
+        private Paint drawPaint;
         private Paint canvasPaint;
         // Holds draw calls
-        private Canvas drawCanvas;
+         private Canvas drawCanvas;
         // Bitmap to hold pixels
         private Bitmap canvasBitmap;
         private Path path = new Path();
         float x = 0;
         float y = 0;
-        static int paintColor;
+        static int paintColor=Color.BLACK;
+        static String paintShape;
         static int strokeWidth = 20;
         HashMap<Path,Integer> colorsMap = new HashMap<Path,Integer>();
         HashMap<Path,Integer> strokeWidthMap = new HashMap<Path,Integer>();
@@ -391,36 +537,71 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
         Display display;
         Paint bitmapPaint;
         Bitmap mbitmap;
-
-        public DrawingView(Context context) {
-
-            super(context);
-            bitmapPaint = new Paint(Paint.DITHER_FLAG);
-
-        }
+        private float brushSize, lastBrushSize;
+        int oldcolor=Color.BLACK;
+        int defaultColor=Color.BLACK;
+        private boolean erase=false;
+//        public DrawingView(Context context) {
+//
+//            super(context);
+//
+//            //setupDrawing();
+//
+//        }
 
         public DrawingView(Context context, AttributeSet attrs) {
             super(context, attrs);
+            setupDrawing();
 
         }
-        public DrawingView(Context context, AttributeSet attrs, int defStyle)
+//        public DrawingView(Context context, AttributeSet attrs, int defStyle)
+//        {
+//            super(context, attrs, defStyle);
+//            //setupDrawing();
+//        }
+        public void  setupDrawing()
         {
-            super(context, attrs, defStyle);
+//prepare for drawing and setup paint stroke properties
+
+            lastBrushSize = brushSize;
+            path = new Path();
+            drawPaint = new Paint();
+            drawPaint.setColor(defaultColor);
+            drawPaint.setAntiAlias(true);
+            drawPaint.setStrokeWidth(strokeWidth);
+            drawPaint.setStyle(Paint.Style.STROKE);
+            drawPaint.setStrokeJoin(Paint.Join.ROUND);
+            drawPaint.setStrokeCap(Paint.Cap.ROUND);
+            canvasPaint = new Paint(Paint.DITHER_FLAG);
+
+
+        }
+        public void setLastBrushSize(float lastSize){
+            lastBrushSize=lastSize;
+        }
+        public float getLastBrushSize(){
+            return lastBrushSize;
         }
 
         @Override
         protected void onDraw(Canvas canvas)
         {
 
+            //super.onDraw(canvas);
+            ////System.out.println("canvas="+canvas+" canvasBitmap="+canvasBitmap+" canvasPaint="+canvasPaint);
+            canvas.drawBitmap(canvasBitmap, 0, 0, canvasPaint);
+            canvas.drawPath(path, drawPaint);
+
+            /* START: OLD CODE COMMENTED */
             // Change the color of paint to use
-            super.onDraw(canvas);
+             super.onDraw(canvas);
 
-            canvas.drawBitmap(mbitmap, 0, 0, bitmapPaint);
 
+           // canvas.drawBitmap(mbitmap, 0, 0, bitmapPaint);
             //baseBitmap = Bitmap.createBitmap(canvas.getWidth(), canvas.getHeight(), Bitmap.Config.ARGB_8888);
             //drawPaint.setStyle(Paint.Style.FILL);
 
-            drawPaint.setAntiAlias(true);
+           drawPaint.setAntiAlias(true);
 
             drawPaint.setStyle(Paint.Style.STROKE);
             drawPaint.setStrokeJoin(Paint.Join.ROUND);
@@ -431,16 +612,37 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
 
             for (Path p : paths)
             {
+
                 drawPaint.setColor(colorsMap.get(p));
                 drawPaint.setStrokeWidth(strokeWidthMap.get(p));
                 canvas.drawPath(p, drawPaint);
+
+                oldcolor = colorsMap.get(p);
+
             }
 
-            drawPaint.setColor(paintColor);
+
+            if(paintColor==Color.WHITE && erase==false)
+            {
+                //System.out.println("Color is white...eraser is off");
+                drawPaint.setColor(oldcolor);
+
+            }
+            else
+            {
+
+                oldcolor = paintColor;
+                drawPaint.setColor(oldcolor);
+                //System.out.println("oldcolor="+oldcolor+" paintColor="+paintColor);
+            }
+
             drawPaint.setStrokeWidth(strokeWidth);
 
             canvas.drawPath(path, drawPaint);
-           // Toast.makeText(getContext(), "In onDraw...paintcolor= " + drawPaint.getColor(), Toast.LENGTH_LONG).show();
+            // Toast.makeText(getContext(), "In onDraw...paintcolor= " + drawPaint.getColor(), Toast.LENGTH_LONG).show();
+            //System.out.println("paintColor="+paintColor);
+            oldcolor=paintColor;
+        /* END: OLD CODE COMMENTED */
 
         }
 
@@ -448,9 +650,9 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
         protected void onSizeChanged(int w, int h, int oldw, int oldh) {
             super.onSizeChanged(w, h, oldw, oldh);
             // Make a new bitmap that stores each pixel on 4 bytes
-
-            mbitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-            drawCanvas = new Canvas(mbitmap);
+            //System.out.println("w="+w+" h="+h);
+            canvasBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            drawCanvas = new Canvas(canvasBitmap);
         }
 
 
@@ -459,37 +661,62 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
         public boolean onTouchEvent(MotionEvent event) {
             // float eventX = event.getX();
             //float eventY = event.getY();
+           // //System.out.println("In onTouchevent canvas="+drawCanvas);
 
-            switch (event.getAction()) {
-                case MotionEvent.ACTION_DOWN:
+            drawCanvas.drawPath(path, drawPaint);
 
                     //path.moveTo(eventX, eventY);
-                    path.moveTo(event.getX(), event.getY());
-                    path.lineTo(event.getX(), event.getY());
-                    //baseBitmap = Bitmap.createBitmap(myViewInstance.getWidth(), myViewInstance.getHeight(), Bitmap.Config.ARGB_8888);
 
-                    break;
-                //return true;
-                case MotionEvent.ACTION_MOVE:
-                    x = event.getX();
-                    y = event.getY();
-                    path.lineTo(x, y);
-                    invalidate();
-                    break;
-                case MotionEvent.ACTION_UP:
-                    colorsMap.put(path,new Integer(paintColor));
-                    strokeWidthMap.put(path, new Integer(strokeWidth));
-                    paths.add(path);
-                    path = new Path();
-                    break;
-                case MotionEvent.ACTION_CANCEL:
-                    break;
-                default:
-                    break;
-            }
+                    //baseBitmap = Bitmap.createBitmap(myViewInstance.getWidth(), myViewInstance.getHeight(), Bitmap.Config.ARGB_8888);
+                    if(paintShape.equals("circle"))
+                    {
+
+                        drawCanvas.drawCircle(event.getX(), event.getY(), 100, drawPaint);
+                    }
+                    else if (paintShape.equals("square"))
+                    {
+
+                        drawCanvas.drawRect(event.getX()+80,event.getY()+80,event.getX()-80,event.getY()-80,drawPaint);
+                    }
+                    else if (paintShape.equals("none"))
+                    {
+                        switch (event.getAction()) {
+                            case MotionEvent.ACTION_DOWN:
+                                path.moveTo(event.getX(), event.getY());
+                                path.lineTo(event.getX(), event.getY());
+                                break;
+                            case MotionEvent.ACTION_MOVE:
+                                x = event.getX();
+                                y = event.getY();
+                                path.lineTo(x, y);
+                                //invalidate();
+                                break;
+                            case MotionEvent.ACTION_UP:
+
+                                colorsMap.put(path,new Integer(paintColor));
+                                strokeWidthMap.put(path, new Integer(strokeWidth));
+                                paths.add(path);
+                                drawCanvas.drawPath(path, drawPaint);
+                                path.lineTo(event.getX(), event.getY());
+
+                                path.reset();
+                                break;
+
+                                /*Now*/
+//                                drawCanvas.drawPath(path, drawPaint);
+//                                path.reset();
+//                                break;
+                            case MotionEvent.ACTION_CANCEL:
+                                break;
+                            default:
+                                break;
+                    }
+
+                }
+
 
             // Schedules a repaint.
-            //invalidate();
+            invalidate();
 
             return true;
         }
@@ -511,17 +738,68 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
             {
                 newColor = Color.BLUE;
             }
-            else
+            else if(newColorStr.equals("white"))
             {
                 newColor = Color.WHITE;
             }
-
+            else
+            {
+                newColor = Color.GRAY;
+            }
             paintColor = newColor;
+
             strokeWidth = newStrokeWidth;
+            //System.out.println("Color in DrawingView="+paintColor+" strokewidth ="+strokeWidth);
 
             //invalidate();
         }
 
+        public void setShape(String newShapeStr){
+            String newShape="circle";
+
+            if(newShapeStr.toLowerCase().equals("circle")) {
+                newShape = "circle";
+            }
+            else if(newShapeStr.equals("square")) {
+                newShape = "square";
+            }
+            if(newShapeStr.toLowerCase().equals("none")) {
+                newShape = "none";
+            }
+
+            paintShape = newShape;
+
+            //invalidate();
+        }
+        public void setCustomStroke(int stroke){
+            //invalidate();
+           //System.out.println("Stroke width = "+stroke);
+            brushSize=stroke;
+            strokeWidth=stroke;
+            drawPaint.setStrokeWidth(brushSize);
+
+
+        }
+
+        public void startNew(){
+            //System.out.println("Before clearing");
+//            mbitmap = Bitmap.createBitmap(myViewInstance.getWidth(), myViewInstance.getHeight(), Bitmap.Config.ARGB_8888);
+//            drawCanvas = new Canvas(mbitmap);
+//            path.reset();
+//            drawCanvas.drawColor(0, PorterDuff.Mode.CLEAR);
+//            drawPaint.reset();
+//            path = new Path();
+//            drawPaint = new Paint();
+//            drawPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+//            drawCanvas.drawRect(0, 0, 0, 0, drawPaint);
+
+//            mbitmap = Bitmap.createBitmap(myViewInstance.getWidth(), myViewInstance.getHeight(), Bitmap.Config.ARGB_8888);
+//            drawCanvas = new Canvas(mbitmap);
+
+            //drawCanvas.drawColor(Color.WHITE);
+            drawCanvas.drawColor(0, PorterDuff.Mode.CLEAR);
+            invalidate();
+        }
         public Bitmap getBitmap()
         {
             //this.measure(100, 100);
@@ -534,7 +812,67 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
 
             return bmp;
         }
+        public void setErase(boolean isErase){
 
+            erase=isErase;
+
+            if(erase) drawPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+            else drawPaint.setXfermode(null);
+            if(erase) {
+                //paintColor = Color.WHITE;
+            }
+            //System.out.println("In ERASE = "+erase+" paintColor="+paintColor);
+
+
+        }
+
+    }
+
+
+    public class ShapesAdapter extends ArrayAdapter<String> {
+
+        public ShapesAdapter(Context context, int textViewResourceId,
+                             String[] objects) {
+            super(context, textViewResourceId, objects);
+// TODO Auto-generated constructor stub
+        }
+
+        @Override
+        public View getDropDownView(int position, View convertView,
+                                    ViewGroup parent) {
+// TODO Auto-generated method stub
+            return getCustomView(position, convertView, parent);
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+// TODO Auto-generated method stub
+            return getCustomView(position, convertView, parent);
+        }
+
+        public View getCustomView(int position, View convertView, ViewGroup parent) {
+// TODO Auto-generated method stub
+//return super.getView(position, convertView, parent);
+
+            LayoutInflater inflater=getLayoutInflater();
+            View row=inflater.inflate(R.layout.shapes_spinner, parent, false);
+//            TextView label=(TextView)row.findViewById(R.id.colorName);
+//            label.setText(spinnerShapeNameArray[position]);
+
+            ImageView icon=(ImageView)row.findViewById(R.id.shapeIcon);
+
+            if (spinnerShapeNameArray[position].toLowerCase().equals("circle")){
+                icon.setImageResource(R.drawable.circle);
+            }
+            else  if (spinnerShapeNameArray[position].toLowerCase().equals("square")){
+                icon.setImageResource(R.drawable.square);
+            }
+            else  if (spinnerShapeNameArray[position].toLowerCase().equals("none")){
+                icon.setImageResource(R.drawable.none);
+            }
+
+            return row;
+        }
     }
 
 
@@ -565,8 +903,8 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
 
             LayoutInflater inflater=getLayoutInflater();
             View row=inflater.inflate(R.layout.colors_spinner, parent, false);
-            TextView label=(TextView)row.findViewById(R.id.colorName);
-            label.setText(spinnerNameArray[position]);
+            //TextView label=(TextView)row.findViewById(R.id.colorName);
+            //label.setText(spinnerNameArray[position]);
 
             ImageView icon=(ImageView)row.findViewById(R.id.colorIcon);
 
@@ -579,10 +917,12 @@ public class FSMToqActivity extends Activity implements OnItemSelectedListener {
             else  if (spinnerNameArray[position]=="Green"){
                 icon.setImageResource(R.drawable.green);
             }
+            else if (spinnerNameArray[position]=="Black"){
+                icon.setImageResource(R.drawable.black);
+            }
 
             return row;
         }
     }
 
 }
-

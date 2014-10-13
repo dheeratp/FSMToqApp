@@ -9,6 +9,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -23,6 +24,10 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import java.util.Timer;
+import 	java.util.TimerTask;
+import android.util.FloatMath;
+
 
 import com.qualcomm.toq.smartwatch.api.v1.deckofcards.Constants;
 import com.qualcomm.toq.smartwatch.api.v1.deckofcards.DeckOfCardsEventListener;
@@ -52,20 +57,22 @@ import java.util.List;
 import gmail.yuyang226.flickrj.sample.android.FlickrjActivity;
 
 
-public class ToqActivity extends Activity implements LocationListener {
+public class ToqActivity extends Activity {
 
     private final static String PREFS_FILE= "prefs_file";
     private final static String DECK_OF_CARDS_KEY= "deck_of_cards_key";
     private final static String DECK_OF_CARDS_VERSION_KEY= "deck_of_cards_version_key";
 
-    private DeckOfCardsManager mDeckOfCardsManager;
-    private RemoteDeckOfCards mRemoteDeckOfCards;
-    private RemoteResourceStore mRemoteResourceStore;
+    static DeckOfCardsManager mDeckOfCardsManager;
+    static RemoteDeckOfCards mRemoteDeckOfCards;
+    static RemoteResourceStore mRemoteResourceStore;
+
     private CardImage[] mCardImages;
     private ToqBroadcastReceiver toqReceiver;
+    static int counterOfNotifications=0;
 
     /*Start: For Location*/
-    LocationManager locationManager;
+    //LocationManager locationManager;
     private String provider;
     Location location;
     private final String PROX_ALERT = "dheera.cs160.berkeley.edu.fsmtoqapp.PROXIMITY_ALERT";
@@ -78,6 +85,9 @@ public class ToqActivity extends Activity implements LocationListener {
 
     ListCard listCard;
     SimpleTextCard simpleTextCard;
+
+    Button uninstallbutton;
+    Button installbutton;
 
     /*End: For Location*/
 
@@ -100,14 +110,14 @@ public class ToqActivity extends Activity implements LocationListener {
         toqReceiver = new ToqBroadcastReceiver();
         init();
         setupUI();
-        detectLocation();
+
     }
 
 
     protected void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(proxReceiver);
-        locationManager.removeProximityAlert(pIntent1);
+        //unregisterReceiver(proxReceiver);
+        //locationManager.removeProximityAlert(pIntent1);
     }
 
 
@@ -115,8 +125,8 @@ public class ToqActivity extends Activity implements LocationListener {
 
 
         super.onResume();
-        Toast.makeText(ToqActivity.this, "Resuming", Toast.LENGTH_SHORT).show();
-        locationManager.requestLocationUpdates(provider, 400, 1, this);
+       // Toast.makeText(ToqActivity.this, "Resuming", Toast.LENGTH_SHORT).show();
+        //locationManager.requestLocationUpdates(provider, 400, 1, this);
 
     }
 
@@ -160,17 +170,39 @@ public class ToqActivity extends Activity implements LocationListener {
     }
 
     private void setupUI() {
-       findViewById(R.id.send_notif_button).setOnClickListener(new View.OnClickListener() {
+
+        //START: ADDED FOR THE ERROR OF APP CRASHING - CRAZY
+        // Panels
+        notificationPanel= (ViewGroup)findViewById(R.id.notification_panel);
+        deckOfCardsPanel= (ViewGroup)findViewById(R.id.doc_panel);
+        setChildrenEnabled(deckOfCardsPanel, false);
+        setChildrenEnabled(notificationPanel, false);
+
+
+        //END: ADDED FOR THE ERROR OF APP CRASHING - CRAZY
+
+
+        final Button btnNotification = (Button) findViewById(R.id.send_notif_button);
+        btnNotification.setVisibility(View.INVISIBLE);
+        uninstallbutton = (Button) findViewById(R.id.uninstall_button);
+        installbutton = (Button) findViewById(R.id.install_button);
+
+        findViewById(R.id.send_notif_button).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-               // sendNotification();
+               sendNotification();
+
             }
         });
+
+        detectLocation();
+
 
         findViewById(R.id.install_button).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 install();
+                //detectLocation();
             }
         });
 
@@ -188,12 +220,14 @@ public class ToqActivity extends Activity implements LocationListener {
 //            }
 //        });
 
-        findViewById(R.id.remove_button).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                removeDeckOfCards();
-            }
-        });
+//        findViewById(R.id.remove_button).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                removeDeckOfCards();
+//            }
+//        });
+
+
     }
     public void detectLocation()
     {
@@ -201,76 +235,113 @@ public class ToqActivity extends Activity implements LocationListener {
 
 
         // Acquire a reference to the system Location Manager
-        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        //locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
-        Criteria criteria = new Criteria();
-        provider = locationManager.getBestProvider(criteria, false);
+        //        Criteria criteria = new Criteria();
+        //        provider = locationManager.getBestProvider(criteria, false);
+        //
+        //        location = locationManager.getLastKnownLocation(provider);
 
-        location = locationManager.getLastKnownLocation(provider);
-
-        setLocationAlert();
+        //setLocationAlert();
 
         /*END THE PART WHERE YOU DETECT LOCATION*/
 
+
+        /* start: Other code */
+
+        // Acquire a reference to the system Location Manager
+        LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+
+        // Define a listener that responds to location updates
+        LocationListener locationListener = new LocationListener() {
+            public void onLocationChanged(Location location) {
+                // Called when a new location is found by the network location provider.
+                double startLat = location.getLatitude();
+                double startLon = location.getLongitude();
+                double endLat = 37.86965;
+                // double endLat=37.365755;
+                double endLon =-122.25914;
+                // double endLon = -122.024196;
+                float[] result = new float[1];
+
+                //Location.distanceBetween(startLat, startLon, endLat, endLon, result);
+
+                //union city - 37.5827,-122.02604100000002
+                double distance = calc_distance_from_reference(startLat,startLon, endLat,endLon);
+
+
+                // Toast.makeText(getApplicationContext(), "Distance is"+result[0], Toast.LENGTH_SHORT).show();
+                //System.out.println("distance ="+distance);
+               // if(result[0]>=50) {
+                if(distance>=10000 && distance<50800) {
+                    //reached Sproul, send notification
+                    Toast.makeText(getApplicationContext(), "You are close to Sproul Plaza!", Toast.LENGTH_SHORT).show();
+                    //System.out.println("NUMBER OF NOTIFS SENT = "+counterOfNotifications);
+                    if(counterOfNotifications<3)
+                    {
+                        sendNotification();
+                        counterOfNotifications++;
+                    }
+                    else{
+                        //System.out.println("!!EXCEEDED 5 NOTIFICATIONS!!"+counterOfNotifications);
+                    }
+
+                }
+                else
+                {
+                    //Toast.makeText(getApplicationContext(), "Go to Sproul Plaza!!", Toast.LENGTH_SHORT).show();
+                }
+
+
+            }
+            public void onStatusChanged(String provider, int status, Bundle extras) {}
+
+            public void onProviderEnabled(String provider) {}
+
+            public void onProviderDisabled(String provider) {}
+
+        };
+
+        // Register the listener with the Location Manager to receive location updates
+        if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+            // Get update every 5 seconds
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 50000, 0, locationListener);
+        }
+
+        if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            // Get update every 5 seconds
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 50000, 0, locationListener);
+        }
+
+      /* end: Other code */
     }
-    public void setLocationAlert()
-    {
-        double lat = 37.58;
-        double lon = -122.01;
-        float radius = 50;
-        String geo = "geo:"+lat+","+lon;
-        Intent intent = new Intent(PROX_ALERT, Uri.parse(geo));
-        intent.putExtra("message", "Union City, CA");
-        pIntent1 = PendingIntent.getBroadcast(getApplicationContext(), 0, intent,
-                PendingIntent.FLAG_CANCEL_CURRENT);
 
-
-        locationManager.addProximityAlert(lat, lon, radius, 60000L, pIntent1);
-
-
-
-        proxReceiver = new ProximityReceiver();
-
-        IntentFilter iFilter = new IntentFilter(PROX_ALERT);
-        iFilter.addDataScheme("geo");
-
-        registerReceiver(proxReceiver, iFilter);
+    private double calc_distance_from_reference(double lat_a, double lng_a, double lat_b, double lng_b) {
+        float pr = (float) (180/3.14169);
+        float a1 = (float)lat_a / pr;
+        float a2 = (float)lng_a / pr;
+        float b1 = (float)lat_b / pr;
+        float b2 = (float)lng_b / pr;
+        float t1 = FloatMath.cos(a1)*FloatMath.cos(a2)*FloatMath.cos(b1)*FloatMath.cos(b2);
+        float t2 = FloatMath.cos(a1)*FloatMath.sin(a2)*FloatMath.cos(b1)*FloatMath.sin(b2);
+        float t3 = FloatMath.sin(a1)* FloatMath.sin(b1);
+        double tt = Math.acos(t1 + t2 + t3);
+        double ans = (double)(6366000*tt);
+        //System.out.println("!!!!!!!!!!!!!!!!!!!GEO ="+(a1+a2+b1+b2+tt));
+        //System.out.println("!!!!!!!!!!!!!!!!!!!Distance between("+lat_a+","+lng_a+")" +"and ("+lat_b+","+lng_b+") is "+ans );
+        return ans ;
     }
 
 
 
-    //Start: LocationListener overridden methods
-    @Override
-    public void onProviderEnabled(String s){
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5 * 60 * 1000, 100, this);
-    }
-    @Override
-    public void onLocationChanged(Location location) {
 
-        lat = location.getLatitude();
-        lng = location.getLongitude();
 
-        Toast.makeText(ToqActivity.this, "Received GPS request for "+ String.valueOf(lat) + "," + String.valueOf(lng) + " , ready to rumble!", Toast.LENGTH_SHORT).show();
 
-        // Do clever stuff here
-
-        sendNotification();
-    }
-
-    public void onStatusChanged(String s, int i, Bundle bundle){
-
-    }
-    public void onProviderDisabled(String s){
-        locationManager.removeUpdates(this);
-
-    }
     //End: LocationListener overridden methods
 
 
 
     private void sendNotification() {
-
-
 
 
         Random generator = new Random();
@@ -280,7 +351,7 @@ public class ToqActivity extends Activity implements LocationListener {
 
         //Object[] values = fsmLeaderObjects.values().toArray();
         //Object randomValue = values[generator.nextInt(values.length)];
-        System.out.println("randomKey = "+randomKey+ " randomvalue = "+value);
+        //System.out.println("randomKey = "+randomKey+ " randomvalue = "+value);
 
 
         String[] message = new String[2];
@@ -300,11 +371,14 @@ public class ToqActivity extends Activity implements LocationListener {
 
         try {
             // Send the notification
-            mDeckOfCardsManager.sendNotification(notification);
-            Toast.makeText(this, "Sent Notification", Toast.LENGTH_SHORT).show();
+            //System.out.println("BEFORE FIRING OFF NOTIFICATION!! mDeckOfCardsManager="+mDeckOfCardsManager);
+                mDeckOfCardsManager.sendNotification(notification);
+                Toast.makeText(ToqActivity.this, "Check your Toq for next steps!!", Toast.LENGTH_SHORT).show();
+
         } catch (RemoteDeckOfCardsException e) {
             e.printStackTrace();
-            Toast.makeText(this, "Failed to send Notification", Toast.LENGTH_SHORT).show();
+            //System.out.println("EXCEPTION IS "+e);
+            //Toast.makeText(this, "Failed to send Notification", Toast.LENGTH_SHORT).show();
         }
     }
     /**
@@ -313,136 +387,61 @@ public class ToqActivity extends Activity implements LocationListener {
     private void install() {
         boolean isInstalled = true;
 
+
         try {
-            System.out.println("***********1*************");
             isInstalled = mDeckOfCardsManager.isInstalled();
-            System.out.println("***********1************* isInstalled= "+isInstalled);
+        }
+        catch (RemoteDeckOfCardsException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Error: Can't determine if app is installed", Toast.LENGTH_SHORT).show();
+        }
+
+        try {
+            //System.out.println("***********1*************");
+            isInstalled = mDeckOfCardsManager.isInstalled();
+            //System.out.println("***********1************* isInstalled= "+isInstalled);
+
+
             //START: ADDED FROM init()
-
-            DeckOfCardsLauncherIcon whiteIcon = null;
-            DeckOfCardsLauncherIcon colorIcon = null;
-
-            // Get the launcher icons
-            try{
-                whiteIcon= new DeckOfCardsLauncherIcon("white.launcher.icon", getBitmap("bw.png"), DeckOfCardsLauncherIcon.WHITE);
-                colorIcon= new DeckOfCardsLauncherIcon("color.launcher.icon", getBitmap("color.png"), DeckOfCardsLauncherIcon.COLOR);
-            }
-            catch (Exception e){
-                e.printStackTrace();
-                System.out.println("Can't get launcher icon");
-                return;
-            }
-
-            mCardImages = new CardImage[6];
-            try{
-                mCardImages[3]= new CardImage("card.image.1", getBitmap("jack_weinberg_toq.png"));
-                mCardImages[2]= new CardImage("card.image.2", getBitmap("joan_baez_toq.png"));
-                mCardImages[4]= new CardImage("card.image.3", getBitmap("michael_rossman_toq.png"));
-                mCardImages[1]= new CardImage("card.image.4", getBitmap("art_goldberg_toq.png"));
-                mCardImages[5]= new CardImage("card.image.5", getBitmap("jackie_goldberg_toq.png"));
-                mCardImages[0]= new CardImage("card.image.6", getBitmap("mario_savio_toq.png"));
-            }
-            catch (Exception e){
-                e.printStackTrace();
-                System.out.println("Can't get picture icon");
-                // UNCOMMENT LATER return;
-            }
-
-            // Try to retrieve a stored deck of cards
-            try {
-                System.out.println("BEFORE mRemoteDeckOfCards = "+mRemoteDeckOfCards);
-
-                // If there is no stored deck of cards or it is unusable, then create new and store
-              /*  if ((mRemoteDeckOfCards = getStoredDeckOfCards()) == null){
-                    System.out.println("@@@@@@@@@@@@@@@@@@ mRemoteDeckOfCards = "+mRemoteDeckOfCards);
-
-                    mRemoteDeckOfCards = createDeckOfCards();
-                    storeDeckOfCards();
-                }*/
-                System.out.println("AFTER mRemoteDeckOfCards = "+mRemoteDeckOfCards);
-            }
-            catch (Throwable th){
-                th.printStackTrace();
-                mRemoteDeckOfCards = null; // Reset to force recreate
-            }
-
-            // Make sure in usable state
-            if (mRemoteDeckOfCards == null){
-                 mRemoteDeckOfCards = createDeckOfCards();
-            }
-            System.out.println("%%%%%%%%%%%%%%%% mRemoteResourceStore = "+mRemoteResourceStore);
-            // Set the custom launcher icons, adding them to the resource store
-            mRemoteDeckOfCards.setLauncherIcons(mRemoteResourceStore, new DeckOfCardsLauncherIcon[]{whiteIcon, colorIcon});
-
-            // Re-populate the resource store with any card images being used by any of the cards
-            /*for (Iterator<Card> it= mRemoteDeckOfCards.getListCard().iterator(); it.hasNext();){
-
-                String cardImageId= ((SimpleTextCard)it.next()).getCardImageId();
-
-                if ((cardImageId != null) && !mRemoteResourceStore.containsId(cardImageId)){
-
-                    if (cardImageId.equals("card.image.1")){
-                        mRemoteResourceStore.addResource(mCardImages[0]);
-                    }
-
-                    else if (cardImageId.equals("card.image.2")){
-                        mRemoteResourceStore.addResource(mCardImages[1]);
-                    }
-                    else if (cardImageId.equals("card.image.3")){
-                        mRemoteResourceStore.addResource(mCardImages[2]);
-                    }
-
-                    else if (cardImageId.equals("card.image.4")){
-                        mRemoteResourceStore.addResource(mCardImages[3]);
-                    }
-
-                    else if (cardImageId.equals("card.image.5")){
-                        mRemoteResourceStore.addResource(mCardImages[4]);
-                    }
-
-                    else if (cardImageId.equals("card.image.6")){
-                        mRemoteResourceStore.addResource(mCardImages[5]);
-                    }
-
-
-                }
-            } */
-
-            System.out.println("@@@@@@@@@@@@@@@@%%%%%%%%%%%%%%%% mRemoteResourceStore = "+mRemoteResourceStore);
 
 
             //END: ADDED FROM init()
         }
         catch (RemoteDeckOfCardsException e) {
             e.printStackTrace();
-            System.out.println("***********1 Exception *************"+e.getMessage());
+            //System.out.println("***********1 Exception *************"+e.getMessage());
             Toast.makeText(this, "Error: Can't determine if app is installed", Toast.LENGTH_SHORT).show();
         }
 
         if (!isInstalled) {
             try {
-                System.out.println("***********2************* mRemoteDeckOfCards = "+mRemoteDeckOfCards);
+                //System.out.println("***********2************* mRemoteDeckOfCards = "+mRemoteDeckOfCards);
                 mDeckOfCardsManager.installDeckOfCards(mRemoteDeckOfCards, mRemoteResourceStore);
-                System.out.println("***********2 After*************");
+                //System.out.println("***********2 After*************");
+
+                //System.out.println("***********3 After sendNotification()*************");
             } catch (RemoteDeckOfCardsException e) {
                 e.printStackTrace();
-                System.out.println("***********2 Exception*************"+e.getMessage());
+                //System.out.println("***********2 Exception*************"+e.getMessage());
                 Toast.makeText(this, "Error: Cannot install application", Toast.LENGTH_SHORT).show();
             }
         } else {
-            System.out.println("***********3*************");
+            //System.out.println("***********3*************");
             Toast.makeText(this, "App is already installed!", Toast.LENGTH_SHORT).show();
         }
 
         try{
-            System.out.println("***********4*************");
+            //System.out.println("***********4*************");
             storeDeckOfCards();
-            System.out.println("***********4 After storeDeckOfCards()*************");
+            //System.out.println("***********4 After storeDeckOfCards()*************");
         }
         catch (Exception e){
-            System.out.println("***********5 Exeption*************"+e.getMessage());
+            //System.out.println("***********5 Exeption*************"+e.getMessage());
             e.printStackTrace();
         }
+        //counterOfNotifications++;
+        //detectLocation();
+
     }
 
     private void uninstall() {
@@ -450,7 +449,7 @@ public class ToqActivity extends Activity implements LocationListener {
 
         try {
             isInstalled = mDeckOfCardsManager.isInstalled();
-
+            //System.out.println("1.....IN UNINSTALL mDeckOfCardsManager="+mDeckOfCardsManager);
 
         }
         catch (RemoteDeckOfCardsException e) {
@@ -460,12 +459,23 @@ public class ToqActivity extends Activity implements LocationListener {
 
         if (isInstalled) {
             try{
+                //System.out.println("2.....IN UNINSTALL mDeckOfCardsManager="+mDeckOfCardsManager);
+
                 mDeckOfCardsManager.uninstallDeckOfCards();
+                uninstallbutton.setEnabled(false);
+                installbutton.setEnabled(true);
+                uninstallbutton.setBackgroundColor(Color.GRAY);
+                installbutton.setBackgroundColor(Color.parseColor("#BA533A"));
+               // btnNotification.performClick();
+                //System.out.println("3.....IN UNINSTALL mDeckOfCardsManager="+mDeckOfCardsManager);
+
             }
             catch (RemoteDeckOfCardsException e){
                 Toast.makeText(this, getString(R.string.error_uninstalling_deck_of_cards), Toast.LENGTH_SHORT).show();
             }
         } else {
+            //System.out.println("4.....IN UNINSTALL mDeckOfCardsManager="+mDeckOfCardsManager);
+
             Toast.makeText(this, getString(R.string.already_uninstalled), Toast.LENGTH_SHORT).show();
         }
     }
@@ -480,6 +490,7 @@ public class ToqActivity extends Activity implements LocationListener {
 
         try {
             mDeckOfCardsManager.updateDeckOfCards(mRemoteDeckOfCards);
+            //System.out.println("IN REMOVEDECKOFCARDS mDeckOfCardsManager="+mDeckOfCardsManager);
         } catch (RemoteDeckOfCardsException e) {
             e.printStackTrace();
             Toast.makeText(this, "Failed to delete Card from ListCard", Toast.LENGTH_SHORT).show();
@@ -491,6 +502,13 @@ public class ToqActivity extends Activity implements LocationListener {
     private void init()
     {
 
+        deckOfCardsManagerListener= new DeckOfCardsManagerListenerImpl();
+        deckOfCardsEventListener= new DeckOfCardsEventListenerImpl();
+        mDeckOfCardsManager.addDeckOfCardsManagerListener(deckOfCardsManagerListener);
+        mDeckOfCardsManager.addDeckOfCardsEventListener(deckOfCardsEventListener);
+        // Create the state receiver
+        toqAppStateReceiver= new ToqAppStateBroadcastReceiver();
+
         fsmLeaderObjects = new HashMap<String, String>();
 
         fsmLeaderObjects.put("Mario Savio", "Express your own view of free speech in a drawing");
@@ -499,29 +517,92 @@ public class ToqActivity extends Activity implements LocationListener {
         fsmLeaderObjects.put("Michael Rossman","Draw Free Speech");
         fsmLeaderObjects.put("Jack Weinberg","Draw FSM");
         fsmLeaderObjects.put("Jackie Goldberg","Draw SLATE");
-        // Create the resource store for icons and images
+
+        // START: ADDED BEFORE SUBMISSION
+
+        DeckOfCardsLauncherIcon whiteIcon = null;
+        DeckOfCardsLauncherIcon colorIcon = null;
         mRemoteResourceStore= new RemoteResourceStore();
-        deckOfCardsManagerListener= new DeckOfCardsManagerListenerImpl();
-        deckOfCardsEventListener= new DeckOfCardsEventListenerImpl();
-        mDeckOfCardsManager.addDeckOfCardsManagerListener(deckOfCardsManagerListener);
-        mDeckOfCardsManager.addDeckOfCardsEventListener(deckOfCardsEventListener);
+
+        // Get the launcher icons
+        try{
+            whiteIcon= new DeckOfCardsLauncherIcon("white.launcher.icon", getBitmap("bw.png"), DeckOfCardsLauncherIcon.WHITE);
+            colorIcon= new DeckOfCardsLauncherIcon("color.launcher.icon", getBitmap("color.png"), DeckOfCardsLauncherIcon.COLOR);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            //System.out.println("Can't get launcher icon");
+            return;
+        }
+        mCardImages = new CardImage[6];
+        try{
+            mCardImages[3]= new CardImage("card.image.1", getBitmap("jack_weinberg_toq.png"));
+            mCardImages[2]= new CardImage("card.image.2", getBitmap("joan_baez_toq.png"));
+            mCardImages[4]= new CardImage("card.image.3", getBitmap("michael_rossman_toq.png"));
+            mCardImages[1]= new CardImage("card.image.4", getBitmap("art_goldberg_toq.png"));
+            mCardImages[5]= new CardImage("card.image.5", getBitmap("jackie_goldberg_toq.png"));
+            mCardImages[0]= new CardImage("card.image.6", getBitmap("mario_savio_toq.png"));
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            //System.out.println("Can't get picture icon");
+            // UNCOMMENT LATER return;
+        }
+
+        try {
+            if ((mRemoteDeckOfCards = getStoredDeckOfCards()) == null) {
+                mRemoteDeckOfCards = createDeckOfCards();
+                storeDeckOfCards();
+            }
+        }
+        catch (Throwable th){
+            th.printStackTrace();
+            mRemoteDeckOfCards = null; // Reset to force recreate
+        }
+        // Make sure in usable state
+        if (mRemoteDeckOfCards == null){
+            //System.out.println("ABOUT TO CALL createDeckOfCards = "+mRemoteDeckOfCards);
+            mRemoteDeckOfCards = createDeckOfCards();
+        }
+        //System.out.println("%%%%%%%%%%%%%%%% mRemoteResourceStore = "+mRemoteResourceStore);
+        // Set the custom launcher icons, adding them to the resource store
+        mRemoteDeckOfCards.setLauncherIcons(mRemoteResourceStore, new DeckOfCardsLauncherIcon[]{whiteIcon, colorIcon});
+
+
+        //System.out.println("@@@@@@@@@@@@@@@@%%%%%%%%%%%%%%%% mRemoteResourceStore = "+mRemoteResourceStore);
+
+        // Re-populate the resource store with any card images being used by any of the cards
+        int i = 0;
+        for (Iterator<Card> it = mRemoteDeckOfCards.getListCard().iterator(); it.hasNext(); ) {
+
+            String cardImageId = ((SimpleTextCard) it.next()).getCardImageId();
+            if ((cardImageId != null) && !mRemoteResourceStore.containsId(cardImageId)) {
+                mRemoteResourceStore.addResource(mCardImages[i]);
+                i++;
+            }
+        }
+
+        //END: ADDED BEFORE SUBMISSION
+
+
+        // Create the resource store for icons and images
+
 
         installDeckOfCardsButton = findViewById(R.id.install_button);
         uninstallDeckOfCardsButton = findViewById(R.id.uninstall_button);
-        // Create the state receiver
-        toqAppStateReceiver= new ToqAppStateBroadcastReceiver();
+
         // Register toq app state receiver
 
         // Status
         statusTextView= (TextView)findViewById(R.id.status_text);
-        statusTextView.setText("Initialised");
+        //statusTextView.setText("Initialised");
 
         registerToqAppStateReceiver();
 
         // If not connected, try to connect
         if (!mDeckOfCardsManager.isConnected()){
 
-            setStatus(getString(R.string.status_connecting));
+            //setStatus(getString(R.string.status_connecting));
 
             Log.d(Constants.TAG, "ToqApiDemo.onStart - not connected, connecting...");
 
@@ -567,9 +648,9 @@ public class ToqActivity extends Activity implements LocationListener {
         public void onCardOpen(final String cardId){
             runOnUiThread(new Runnable(){
                 public void run(){
-                    Toast.makeText(ToqActivity.this, getString(R.string.event_card_open) + cardId, Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(ToqActivity.this, getString(R.string.event_card_open) + cardId, Toast.LENGTH_SHORT).show();
 
-                    System.out.println("&&&&&&&&&&&&&&&&&&&&& In onCardOpen &&&&&&&&&&&&&&&&&&&&&&");
+                    //System.out.println("&&&&&&&&&&&&&&&&&&&&& In onCardOpen &&&&&&&&&&&&&&&&&&&&&&"+mRemoteDeckOfCards);
 
                     Intent intent = new Intent(getApplicationContext(), FSMToqActivity.class);
 
@@ -586,7 +667,7 @@ public class ToqActivity extends Activity implements LocationListener {
         public void onCardVisible(final String cardId){
             runOnUiThread(new Runnable(){
                 public void run(){
-                    Toast.makeText(ToqActivity.this, getString(R.string.event_card_visible) + cardId, Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(ToqActivity.this, getString(R.string.event_card_visible) + cardId, Toast.LENGTH_SHORT).show();
                 }
             });
         }
@@ -597,7 +678,7 @@ public class ToqActivity extends Activity implements LocationListener {
         public void onCardInvisible(final String cardId){
             runOnUiThread(new Runnable(){
                 public void run(){
-                    Toast.makeText(ToqActivity.this, getString(R.string.event_card_invisible) + cardId, Toast.LENGTH_SHORT).show();
+                   // Toast.makeText(ToqActivity.this, getString(R.string.event_card_invisible) + cardId, Toast.LENGTH_SHORT).show();
                 }
             });
         }
@@ -608,7 +689,7 @@ public class ToqActivity extends Activity implements LocationListener {
         public void onCardClosed(final String cardId){
             runOnUiThread(new Runnable(){
                 public void run(){
-                    Toast.makeText(ToqActivity.this, getString(R.string.event_card_closed) + cardId, Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(ToqActivity.this, getString(R.string.event_card_closed) + cardId, Toast.LENGTH_SHORT).show();
                 }
             });
         }
@@ -619,7 +700,7 @@ public class ToqActivity extends Activity implements LocationListener {
         public void onMenuOptionSelected(final String cardId, final String menuOption){
             runOnUiThread(new Runnable(){
                 public void run(){
-                    Toast.makeText(ToqActivity.this, getString(R.string.event_menu_option_selected) + cardId + " [" + menuOption + "]", Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(ToqActivity.this, getString(R.string.event_menu_option_selected) + cardId + " [" + menuOption + "]", Toast.LENGTH_SHORT).show();
                 }
             });
         }
@@ -630,8 +711,7 @@ public class ToqActivity extends Activity implements LocationListener {
         public void onMenuOptionSelected(final String cardId, final String menuOption, final String quickReplyOption){
             runOnUiThread(new Runnable(){
                 public void run(){
-                    Toast.makeText(ToqActivity.this, getString(R.string.event_menu_option_selected) + cardId + " [" + menuOption + ":" + quickReplyOption +
-                            "]", Toast.LENGTH_SHORT).show();
+                   // Toast.makeText(ToqActivity.this, getString(R.string.event_menu_option_selected) + cardId + " [" + menuOption + ":" + quickReplyOption +  "]", Toast.LENGTH_SHORT).show();
                 }
             });
         }
@@ -642,13 +722,13 @@ public class ToqActivity extends Activity implements LocationListener {
     private Bitmap getBitmap(String fileName) throws Exception{
 
         try{
-            System.out.println("Filename ="+fileName);
+            //System.out.println("Filename ="+fileName);
             InputStream is= getAssets().open(fileName);
-            System.out.println("Input Stream ="+is);
+            //System.out.println("Input Stream ="+is);
             return BitmapFactory.decodeStream(is);
         }
         catch (Exception e){
-            System.out.println("EXCEPTION in getBitmap="+e.getMessage());
+            //System.out.println("EXCEPTION in getBitmap="+e.getMessage());
             throw new Exception("An error occurred getting the bitmap: " + fileName, e);
         }
     }
@@ -677,7 +757,7 @@ public class ToqActivity extends Activity implements LocationListener {
      * This is mainly used to
      */
     private void storeDeckOfCards() throws Exception{
-        System.out.println("In storeDeckOfCards ");
+        //System.out.println("In storeDeckOfCards ");
         // Retrieve and hold the contents of PREFS_FILE, or create one when you retrieve an editor (SharedPreferences.edit())
         SharedPreferences prefs = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE);
         // Create new editor with preferences above
@@ -688,7 +768,7 @@ public class ToqActivity extends Activity implements LocationListener {
         editor.putInt(DECK_OF_CARDS_VERSION_KEY, Constants.VERSION_CODE);
         // Commit these changes
         editor.commit();
-        System.out.println("In storeDeckOfCards After commit");
+        //System.out.println("In storeDeckOfCards After commit");
     }
 
     // Check if the stored deck of cards is valid for this version of the demo
@@ -704,34 +784,13 @@ public class ToqActivity extends Activity implements LocationListener {
     // Create some cards with example content
     private RemoteDeckOfCards createDeckOfCards(){
 
-        //START: CODE THAT EXISTED BEFORE
-       /* ListCard listCard =  new ListCard();
-
-        SimpleTextCard simpleTextCard= new SimpleTextCard("card0");
-        listCard.add(simpleTextCard);
-
-        simpleTextCard= new SimpleTextCard("card1");
-        listCard.add(simpleTextCard);
-
-        return new RemoteDeckOfCards(this, listCard);*/
-        //END: CODE THAT EXISTED BEFORE
-
-
-
-
-        listCard =  new ListCard();// mRemoteDeckOfCards.getListCard();
-
-        // Create a SimpleTextCard with 1 + the current number of SimpleTextCards
-
-
-
-
+        listCard =  new ListCard();
         for (Map.Entry<String,String> entry : fsmLeaderObjects.entrySet()) {
 
 
             String key = entry.getKey();
             String value = entry.getValue();
-            System.out.println("IN FOR LOOP...key = "+key+" value = "+value);
+            //System.out.println("IN FOR LOOP...key = "+key+" value = "+value);
             //FOR SIMPLE TEXT CARD FOR EACH PERSON
 
             simpleTextCard = new SimpleTextCard(Integer.toString(i));
@@ -744,13 +803,11 @@ public class ToqActivity extends Activity implements LocationListener {
             }
             catch (Exception e){
                 e.printStackTrace();
-                System.out.println("Can't get picture icon");
+                //System.out.println("Can't get picture icon");
                 // UNCOMMENT LATER return;
             }
             simpleTextCard.setHeaderText(key);
             simpleTextCard.setTitleText(value);
-//            String[] messages = {"Message: " + Integer.toString(i)};
-//            simpleTextCard.setMessageText(messages);
             simpleTextCard.setReceivingEvents(true);
             simpleTextCard.setShowDivider(true);
 
@@ -758,15 +815,16 @@ public class ToqActivity extends Activity implements LocationListener {
 
             i++;
         }
-
+        mRemoteDeckOfCards = new RemoteDeckOfCards(this, listCard);
 
         try {
+            //System.out.println("***BEFORE UPDATEDECKOFCARDS***mDeckOfCardsManager="+mDeckOfCardsManager);
             mDeckOfCardsManager.updateDeckOfCards(mRemoteDeckOfCards,mRemoteResourceStore);
         } catch (RemoteDeckOfCardsException e) {
             e.printStackTrace();
-            Toast.makeText(this, "Failed to Create SimpleTextCard", Toast.LENGTH_SHORT).show();
+           // Toast.makeText(this, "Failed to Create SimpleTextCard", Toast.LENGTH_SHORT).show();
         }
-        return new RemoteDeckOfCards(this, listCard);
+        return mRemoteDeckOfCards;
     }
 
     // Toq app state receiver
@@ -811,6 +869,9 @@ public class ToqActivity extends Activity implements LocationListener {
 
                 // If the deck of cards applet is already installed
                 if (mDeckOfCardsManager.isInstalled()){
+                    installbutton.setBackgroundColor(Color.GRAY);
+                    installbutton.setEnabled(false);
+                    uninstallbutton.setEnabled(true);
                     Log.d(Constants.TAG, "ToqApiDemo.refreshUI - already installed");
                     updateUIInstalled();
                 }
@@ -865,8 +926,8 @@ public class ToqActivity extends Activity implements LocationListener {
     private void updateUIInstalled(){
 
         // Panels
-        notificationPanel= (ViewGroup)findViewById(R.id.notification_panel);
-        deckOfCardsPanel= (ViewGroup)findViewById(R.id.doc_panel);
+       // notificationPanel= (ViewGroup)findViewById(R.id.notification_panel);
+       // deckOfCardsPanel= (ViewGroup)findViewById(R.id.doc_panel);
 
         // Enable everything
         setChildrenEnabled(deckOfCardsPanel, true);
@@ -889,7 +950,9 @@ public class ToqActivity extends Activity implements LocationListener {
         // Enable deck of cards panel
         setChildrenEnabled(deckOfCardsPanel, true);
 
-
+        uninstallbutton.setBackgroundColor(Color.GRAY);
+        uninstallbutton.setEnabled(false);
+        installbutton.setEnabled(true);
 
         // Install enabled; update, uninstall disabled
         installDeckOfCardsButton.setEnabled(true);
@@ -898,6 +961,7 @@ public class ToqActivity extends Activity implements LocationListener {
 
         // Focus
         installDeckOfCardsButton.requestFocus();
+        //setupUI();
     }
 
 
@@ -912,7 +976,7 @@ public class ToqActivity extends Activity implements LocationListener {
         public void onConnected(){
             runOnUiThread(new Runnable(){
                 public void run(){
-                    setStatus(getString(R.string.status_connected));
+                    //setStatus(getString(R.string.status_connected));
                     refreshUI();
                 }
             });
@@ -936,8 +1000,17 @@ public class ToqActivity extends Activity implements LocationListener {
         public void onInstallationSuccessful(){
             runOnUiThread(new Runnable(){
                 public void run(){
-                    setStatus(getString(R.string.status_installation_successful));
+
+                    //setStatus(getString(R.string.status_installation_successful));
                     updateUIInstalled();
+                    uninstallbutton.setEnabled(true);
+                    installbutton.setEnabled(false);
+                    installbutton.setBackgroundColor(Color.GRAY);
+                    uninstallbutton.setBackgroundColor(Color.parseColor("#BA533A"));
+
+                    Toast.makeText(ToqActivity.this, R.string.status_installation_successful, Toast.LENGTH_SHORT).show();
+
+
                 }
             });
         }
@@ -948,7 +1021,9 @@ public class ToqActivity extends Activity implements LocationListener {
         public void onInstallationDenied(){
             runOnUiThread(new Runnable(){
                 public void run(){
-                    setStatus(getString(R.string.status_installation_denied));
+                    Toast.makeText(ToqActivity.this, R.string.status_installation_denied, Toast.LENGTH_SHORT).show();
+
+                   // setStatus(getString(R.string.status_installation_denied));
                     updateUINotInstalled();
                 }
             });
@@ -960,7 +1035,13 @@ public class ToqActivity extends Activity implements LocationListener {
         public void onUninstalled(){
             runOnUiThread(new Runnable(){
                 public void run(){
-                    setStatus(getString(R.string.status_uninstalled));
+                    Toast.makeText(ToqActivity.this, R.string.status_uninstalled, Toast.LENGTH_SHORT).show();
+
+                   // setStatus(getString(R.string.status_uninstalled));
+                    uninstallbutton.setEnabled(false);
+                    uninstallbutton.setBackgroundColor(Color.GRAY);
+                    installbutton.setEnabled(true);
+                    installbutton.setBackgroundColor(Color.parseColor("#BA533A"));
                     updateUINotInstalled();
                 }
             });

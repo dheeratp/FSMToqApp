@@ -76,7 +76,7 @@ public class OAuthTask extends AsyncTask<Void, Integer, String> {
 	@Override
 	protected String doInBackground(Void... params) {
 		try {
-            System.out.println("In doInBackground!!!");
+            //System.out.println("In doInBackground!!!");
 			Flickr f = FlickrHelper.getInstance().getFlickr();
 			OAuthToken oauthToken = f.getOAuthInterface().getRequestToken(
 					OAUTH_CALLBACK_URI.toString());
