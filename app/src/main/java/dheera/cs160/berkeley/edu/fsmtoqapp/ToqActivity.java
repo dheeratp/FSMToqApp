@@ -249,50 +249,28 @@ public class ToqActivity extends Activity {
 
         /* start: Other code */
 
-        // Acquire a reference to the system Location Manager
+        // Use Location Manager to get location
         LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
-        // Define a listener that responds to location updates
+        // Location updates listener
         LocationListener locationListener = new LocationListener() {
             public void onLocationChanged(Location location) {
-                // Called when a new location is found by the network location provider.
+
                 double startLat = location.getLatitude();
                 double startLon = location.getLongitude();
+                //Sproul's lat long values
                 double endLat = 37.86965;
-                // double endLat=37.365755;
                 double endLon =-122.25914;
-                // double endLon = -122.024196;
-                float[] result = new float[1];
 
-                //Location.distanceBetween(startLat, startLon, endLat, endLon, result);
-
-                //union city - 37.5827,-122.02604100000002
                 double distance = calc_distance_from_reference(startLat,startLon, endLat,endLon);
 
-
-                // Toast.makeText(getApplicationContext(), "Distance is"+result[0], Toast.LENGTH_SHORT).show();
-                //System.out.println("distance ="+distance);
-               // if(result[0]>=50) {
-                if(distance>=10000 && distance<50800) {
+                if(distance<=50) {
                     //reached Sproul, send notification
                     Toast.makeText(getApplicationContext(), "You are close to Sproul Plaza!", Toast.LENGTH_SHORT).show();
-                    //System.out.println("NUMBER OF NOTIFS SENT = "+counterOfNotifications);
-                    if(counterOfNotifications<3)
-                    {
-                        sendNotification();
-                        counterOfNotifications++;
-                    }
-                    else{
-                        //System.out.println("!!EXCEEDED 5 NOTIFICATIONS!!"+counterOfNotifications);
-                    }
+                     sendNotification();
+                     counterOfNotifications++;
 
                 }
-                else
-                {
-                    //Toast.makeText(getApplicationContext(), "Go to Sproul Plaza!!", Toast.LENGTH_SHORT).show();
-                }
-
-
             }
             public void onStatusChanged(String provider, int status, Bundle extras) {}
 
